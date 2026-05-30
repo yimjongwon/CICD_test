@@ -18,15 +18,18 @@ jobs:
         uses: Codium-ai/pr-agent@v0.22
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OPENAI_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           
           # 💡 사용할 AI 모델 지정 (Gemini Flash 사용)
           config.model: "gemini/gemini-1.5-flash"
           config.language: "ko" # 👈 한국어로 리뷰하도록 설정
           
+          # 💡코드가 추가로 push(synchronize) 되어도 스킵하지 않고 일하게 만듦!
+          github_action.handle_synchronize_toggle: "true"
+
           # ⚡ [핵심] 요약 문서만 달랑 남기는 게 아니라, 사진처럼 '줄별 리뷰'를 강제하는 옵션
           pr_reviewer.inline_code_comments: "true" 
-          
+
           # 🏷️ [태그] 중요도(High/Medium/Low) 및 라벨 태그를 활성화
           pr_reviewer.enable_labels: "true"
           
