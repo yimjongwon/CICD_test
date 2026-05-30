@@ -1,0 +1,36 @@
+name: AI Agent
+on:
+  pull_request:
+    types: [opened, synchronize] # 코드가 업데이트(commit 추가)될 때도 작동하도록 추가
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai_agent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gemini Agent
+        uses: daizzah/gemini-pr-agent@v1.0.0
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          # 💡 AI에게 한국어로 리뷰하라고 강제하는 프롬프트(지침) 추가
+          custom_system_prompt: |
+            You are an expert DevOps engineer and senior code reviewer.
+            You must provide all code reviews, descriptions, bug catches, and smart suggestions strictly in Korean.
+            Do not use English for the main descriptions. Use polite and clear Korean development terminology.
+
+      - name: Post Comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -f pr_output.md ]; then
+            # 💡 혹시 모를 인코딩 깨짐 방지 및 정상 출력을 위해 변환 후 댓글 작성
+            gh pr comment ${{ github.event.pull_request.number }} --body-file pr_output.md
+          fi
