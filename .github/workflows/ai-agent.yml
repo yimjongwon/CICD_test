@@ -1,39 +1,37 @@
-name: AI Agent
+# name: AI Agent
 
-on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+# on:
+#   pull_request:
+#     types: [opened, synchronize, reopened]
 
-permissions:
-  issues: write
-  pull-requests: write
-  contents: read
+# permissions:
+#   contents: read
+#   pull-requests: write
 
-jobs:
-  ai_agent:
-    runs-on: ubuntu-latest
-    name: Run PR Agent
-    steps:
-      - name: PR Agent Action
-        uses: Codium-ai/pr-agent@main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OPENAI_KEY: ${{ secrets.GEMINI_API_KEY }}
+# jobs:
+#   ai_agent:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       - name: Run Gemini PR Reviewer
+#         # 💡 제미나이 전용으로 정형화되어 버그가 없는 깔끔한 오픈소스 액션입니다.
+#         uses: uensand/google-gemini-review-action@v1
+#         with:
+#           # 🔐 필수 인증 키 세팅
+#           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+#           github_token: ${{ secrets.GITHUB_TOKEN }}
           
-          # 💡 사용할 AI 모델 지정 (Gemini Flash 사용)
-          config.model: "gemini/gemini-1.5-flash"
-          config.language: "ko" # 👈 한국어로 리뷰하도록 설정
+#           # 🤖 완벽한 최신 모델 가동
+#           model: "gemini-1.5-flash"
           
-          # ⚡ [핵심] 요약 문서만 달랑 남기는 게 아니라, 사진처럼 '줄별 리뷰'를 강제하는 옵션
-          pr_reviewer.inline_code_comments: "true"
-          
-          # 🏷️ [태그] 중요도(High/Medium/Low) 및 라벨 태그를 활성화
-          pr_reviewer.enable_labels: "true"
-          
-          # 🧠 시니어 DevOps 엔지니어 지침 주입 (Ansible, Terraform 완벽 대응)
-          pr_reviewer.extra_instructions: |
-            당신은 실력 있는 시니어 DevOps 엔지니어입니다.
-            인프라 코드(Ansible, Terraform 등)의 변경 사항을 날카롭게 분석하세요.
-            반드시 다음 두 가지를 지켜야 합니다:
-            1. 수정된 코드의 특정 줄(Line)에 직접 매칭되는 코드 리뷰 댓글(Inline Comment)을 작성하세요.
-            2. 문제의 심각도나 중요도(예: [High Priority], [Medium], [Suggestion])를 말머리에 명시하고, 왜 그렇게 수정해야 하는지 인프라 관점에서 상세히 한국어로 설명하세요.
+#           # 🧠 테라폼 0.0.0.0/0 다 털어버리는 기강 잡기 프롬프트
+#           prompt: |
+#             당신은 클라우드 보안에 타협이 없는 철두철미한 시니어 DevOps 엔지니어입니다.
+#             제출된 테라폼 코드 변경점을 날카롭게 분석하여 코드 리뷰(Comment)를 달아주세요.
+            
+#             반드시 다음 규칙을 지켜야 합니다:
+#             1. 모든 리뷰와 피드백은 '무조건 한국어'로만 작성하세요.
+#             2. 변경된 테라폼 코드 중 보안그룹(aws_security_group)에서 `cidr_blocks = ["0.0.0.0/0"]`을 사용하여 22번(SSH)이나 5432번(DB) 포트를 전면 개방한 곳이 있다면 절대 그냥 넘어가지 마세요.
+#             3. 해당 취약한 줄에 직접 핀포인트 댓글을 달고, 말머리에 [High Priority]를 붙여 "실무에서 중요 포트를 전체 개방하면 해킹 위험이 매우 크므로 특정 신뢰할 수 있는 IP 대역으로 제한해야 한다"고 따끔하게 훈수하세요.
