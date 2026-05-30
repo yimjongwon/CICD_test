@@ -1,7 +1,7 @@
 name: AI Agent
 on:
   pull_request:
-    types: [opened, synchronize] # 코드가 업데이트(commit 추가)될 때도 작동하도록 추가
+    types: [opened, synchronize]
 
 permissions:
   contents: read
@@ -20,17 +20,19 @@ jobs:
         uses: daizzah/gemini-pr-agent@v1.0.0
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          # 💡 AI에게 한국어로 리뷰하라고 강제하는 프롬프트(지침) 추가
+          # 💡 프롬프트 자체를 한국어로 완전히 변경
           custom_system_prompt: |
-            You are an expert DevOps engineer and senior code reviewer.
-            You must provide all code reviews, descriptions, bug catches, and smart suggestions strictly in Korean.
-            Do not use English for the main descriptions. Use polite and clear Korean development terminology.
+            당신은 최고의 DevOps 엔지니어이자 시니어 코드 리뷰어입니다.
+            반드시 다음 지침을 칼같이 지켜주세요:
+            1. 모든 코드 리뷰, PR 요약, 버그 발견, 개선 제안은 '무조건' 한국어로만 작성하세요.
+            2. 영어를 메인 설명 언어로 절대 사용하지 마세요.
+            3. 격식 있고 명확한 한국어 개발 전문 용어를 사용하세요. (예: 'Single-character placeholder' 대신 '단일 문자 임시 값')
+            4. 출력 포맷의 헤더(Summary, Improvements 등)도 전부 '요약', '개선 제안' 같은 한국어로 번역해서 출력하세요.
 
       - name: Post Comment
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -f pr_output.md ]; then
-            # 💡 혹시 모를 인코딩 깨짐 방지 및 정상 출력을 위해 변환 후 댓글 작성
             gh pr comment ${{ github.event.pull_request.number }} --body-file pr_output.md
           fi
