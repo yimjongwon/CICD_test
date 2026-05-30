@@ -17,7 +17,7 @@ jobs:
 
       - name: Run Gemini PR Reviewer
         # 💡 제미나이 전용으로 정형화되어 버그가 없는 깔끔한 오픈소스 액션입니다.
-        uses: uesand/google-gemini-review-action@v1
+        uses: uensand/google-gemini-review-action@v1
         with:
           # 🔐 필수 인증 키 세팅
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
