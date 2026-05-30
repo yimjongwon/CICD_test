@@ -193,7 +193,7 @@ resource "terraform_data" "wait_for_instance" {
 
     # local computer (rocky linux)에서 실행할 명령
     provisioner "local-exec" {
-        command = "sleep 30"
+        command = "sleep 60"
     }
 }
 
