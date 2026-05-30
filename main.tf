@@ -95,18 +95,18 @@ resource "aws_security_group" "ssh_sg" {
 
     # 밖에서 안으로 들어오는 규칙 ingress
     ingress {
-        from_port   = 22            # 시작 port
-        to_port     = 22            # 끝 port
-        protocol    = "tcp"         # protocol
-        cidr_blocks = ["0.0.0.0/0"] # 외부에서 들어오는 모든 traffic (실무에서는 나의 ip만)
+        from_port   = 22           
+        to_port     = 22            
+        protocol    = "tcp"       
+        cidr_blocks = ["0.0.0.0/0"] 
     }
 
     # 밖에서 안으로 들어오는 규칙 ingress
     ingress {
-        from_port   = 5432            # 시작 port
-        to_port     = 5432            # 끝 port
-        protocol    = "tcp"         # protocol
-        cidr_blocks = ["0.0.0.0/0"] # 외부에서 들어오는 모든 traffic (실무에서는 나의 ip만)
+        from_port   = 5432            
+        to_port     = 5432            
+        protocol    = "tcp"         
+        cidr_blocks = ["0.0.0.0/0"] 
     }
 
     # 안에서 밖으로 나가는 규칙 egress
