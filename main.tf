@@ -98,7 +98,7 @@ resource "aws_security_group" "ssh_sg" {
         from_port   = 22            # 시작 port
         to_port     = 22            # 끝 port
         protocol    = "tcp"         # protocol
-        cidr_blocks = ["0.0.0.0/0"] # 외부에서 들어오는 모든 traffic(실무에서는 나의 ip만)
+        cidr_blocks = ["0.0.0.0/0"] # 외부에서 들어오는 모든 traffic (실무에서는 나의 ip만)
     }
 
     # 밖에서 안으로 들어오는 규칙 ingress
