@@ -1,36 +1,39 @@
 name: AI Agent
+
 on:
   pull_request:
-    types: [opened, synchronize] # 코드가 업데이트(commit 추가)될 때도 작동하도록 추가
+    types: [opened, synchronize, reopened]
 
 permissions:
-  contents: read
+  issues: write
   pull-requests: write
+  contents: read
 
 jobs:
   ai_agent:
     runs-on: ubuntu-latest
+    name: Run PR Agent
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Run Gemini Agent
-        uses: daizzah/gemini-pr-agent@v1.0.0
-        with:
-          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          # 💡 AI에게 한국어로 리뷰하라고 강제하는 프롬프트(지침) 추가
-          custom_system_prompt: |
-            You are an expert DevOps engineer and senior code reviewer.
-            You must provide all code reviews, descriptions, bug catches, and smart suggestions strictly in Korean.
-            Do not use English for the main descriptions. Use polite and clear Korean development terminology.
-
-      - name: Post Comment
+      - name: PR Agent Action
+        uses: Codium-ai/pr-agent@main
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ -f pr_output.md ]; then
-            # 💡 혹시 모를 인코딩 깨짐 방지 및 정상 출력을 위해 변환 후 댓글 작성
-            gh pr comment ${{ github.event.pull_request.number }} --body-file pr_output.md
-          fi
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_KEY: ${{ secrets.GEMINI_API_KEY }}
+          
+          # 💡 사용할 AI 모델 지정 (Gemini Flash 사용)
+          config.model: "gemini/gemini-1.5-flash"
+          config.language: "ko" # 👈 한국어로 리뷰하도록 설정
+          
+          # ⚡ [핵심] 요약 문서만 달랑 남기는 게 아니라, 사진처럼 '줄별 리뷰'를 강제하는 옵션
+          pr_reviewer.inline_code_comments: "true"
+          
+          # 🏷️ [태그] 중요도(High/Medium/Low) 및 라벨 태그를 활성화
+          pr_reviewer.enable_labels: "true"
+          
+          # 🧠 시니어 DevOps 엔지니어 지침 주입 (Ansible, Terraform 완벽 대응)
+          pr_reviewer.extra_instructions: |
+            당신은 실력 있는 시니어 DevOps 엔지니어입니다.
+            인프라 코드(Ansible, Terraform 등)의 변경 사항을 날카롭게 분석하세요.
+            반드시 다음 두 가지를 지켜야 합니다:
+            1. 수정된 코드의 특정 줄(Line)에 직접 매칭되는 코드 리뷰 댓글(Inline Comment)을 작성하세요.
+            2. 문제의 심각도나 중요도(예: [High Priority], [Medium], [Suggestion])를 말머리에 명시하고, 왜 그렇게 수정해야 하는지 인프라 관점에서 상세히 한국어로 설명하세요.
