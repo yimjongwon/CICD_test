@@ -1,7 +1,7 @@
 ---
 name: Feature
 about: Feature
-title: "[FEATURE]"
+title: "[FEATURE] "
 labels: feature
 assignees: ''
 
