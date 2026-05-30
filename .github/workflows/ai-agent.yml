@@ -26,6 +26,7 @@ jobs:
           
           # ⚡ [핵심] 요약 문서만 달랑 남기는 게 아니라, 사진처럼 '줄별 리뷰'를 강제하는 옵션
           pr_reviewer.inline_code_comments: "true" 
+          
           # 🏷️ [태그] 중요도(High/Medium/Low) 및 라벨 태그를 활성화
           pr_reviewer.enable_labels: "true"
           
