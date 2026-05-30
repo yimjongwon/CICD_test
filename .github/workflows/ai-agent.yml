@@ -25,12 +25,9 @@ jobs:
           config.language: "ko" # 👈 한국어로 리뷰하도록 설정
           
           # ⚡ [핵심] 요약 문서만 달랑 남기는 게 아니라, 사진처럼 '줄별 리뷰'를 강제하는 옵션
-          pr_reviewer.inline_code_comments: "true"
-          
+          pr_reviewer.inline_code_comments: "true" 
           # 🏷️ [태그] 중요도(High/Medium/Low) 및 라벨 태그를 활성화
           pr_reviewer.enable_labels: "true"
-
-          pr_reviewer.require_score_to_review: "0"
           
           # 🧠 시니어 DevOps 엔지니어 지침 주입 (Ansible, Terraform 완벽 대응)
           pr_reviewer.extra_instructions: |
