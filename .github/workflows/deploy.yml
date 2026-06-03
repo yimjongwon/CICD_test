@@ -1,7 +1,7 @@
 # test01/.github/workflows/deploy.yml
 
 
-name: "Terraform & Ansible CI/CD(테스트 단계)"
+name: "Terraform & Ansible CI/CD"
 on:
   push: # 자동 push
     branches: ["main", "dev"] # main 브렌치에 push 가 될때마다 실행하겠다는 의미
