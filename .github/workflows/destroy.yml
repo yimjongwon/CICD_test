@@ -1,0 +1,25 @@
+# .github/workflows/destroy.yml
+
+
+name: "Terraform Destroy"
+on:
+  workflow_dispatch: # destory 수동 실행 버튼
+jobs:
+  terraform-destroy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+
+      - name: Terraform Init & Destroy
+        working-directory: ./infra/terraform # 폴더 지정
+        run: |
+          terraform init -backend-config=hcl/backend.hcl
+          terraform destroy --auto-approve
