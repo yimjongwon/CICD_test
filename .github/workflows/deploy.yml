@@ -15,15 +15,18 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v5
       
-      # docker 폴더의 변경 사항 감지
-      - name: Check for Docker changes
+      # 관련 애플리케이션 및 빌드 파일 변경 사항 정밀 감지
+      - name: Check for Application and Docker changes
         id: changes
         uses: dorny/paths-filter@v3
         with:
           base: ${{ github.event.before }}
           filters: |
             docker_updated:
-              - 'docker/**' # docker 폴더 내부의 모든 파일 변경 감시
+              - 'src/**'                  # 소스코드 변경 시
+              - 'Dockerfile'              # 도커 빌드 메커니즘 변경 시
+              - 'docker-compose.yml'      # 컨테이너 구성 변경 시
+              - 'docker/requirements.txt' # 파이썬 패키지 의존성 변경 시
      
       # 2. terraform 환경 구성
       - name: Setup Terraform
