@@ -10,10 +10,6 @@ jobs:
     runs-on: ubuntu-latest # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
     # unbuntu machine 의 환경변수에 넣어줄 값을 셋팅하는 설정
     # 우리가 mgmt 서버에  aws configure 를 실행해서 키를 등록했듯이  1 회용 ubuntu 서버에도 동일한 작업을 해준다
-    # job 안의 모든 step 에서 등록된 aws 키를 공통으로 사용하게 된다.
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }} # github 에 secrets 가 등록
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # github 에 secrets 가 등록
     steps:
       # 1. 소스코드 체크아웃
       - name: Checkout Source Code
@@ -27,7 +23,38 @@ jobs:
       - name: Terraform init & plan
         working-directory: ./infra/terraform # 폴더 지정
         run: |
-          terraform init -backend-config=hcl/backend.hcl
+          # 푸시한 사람(github.actor)에 따라 버킷명과 테이블명을 변수에 할당
+          if [ "${{ github.actor }}" = "ShinJunhan" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.JUNHAN_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.JUNHAN_SECRET_KEY }}"
+          elif [ "${{ github.actor }}" = "KTCLIF" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.KTCLIF_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.KTCLIF_SECRET_KEY }}"
+          elif [ "${{ github.actor }}" = "tkddn3901" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.SANGWOO_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.SANGWOO_SECRET_KEY }}"
+          elif [ "${{ github.actor }}" = "yimjongwon" ]; then
+            MY_BUCKET="tfstate-bucket-24a36553"
+            MY_TABLE="DynamoDB-terraform-lock"
+            export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"   
+          elif [ "${{ github.actor }}" = "zeoxixx" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.ZEOXIXX_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.ZEOXIXX_SECRET_KEY }}"
+          fi
+
+          terraform init \
+            -backend-config="bucket=${MY_BUCKET}" \
+            -backend-config="dynamodb_table=${MY_TABLE}" \
+            -backend-config="region=ap-northeast-2"
           terraform plan
 
       # # 4. apply (배포 단계, 예정)
