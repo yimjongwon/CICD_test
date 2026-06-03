@@ -76,7 +76,9 @@ jobs:
         working-directory: ./docker
         run: |
           # 내 도커허브 계정명/이미지명:태그 형태로 빌드합니다.
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }} .
+          docker build \
+          --build-arg GITHUB_ACTOR="${{ github.actor }}" \
+          -t ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }} .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }}
 
       # --------------------------------------------------

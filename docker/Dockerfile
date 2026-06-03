@@ -1,5 +1,10 @@
 # 1. 가벼운 파이썬 공식 이미지 사용
 FROM python:3.11-slim
+
+# 이미지 내부에 고유 설명 라벨 심기
+LABEL description="FastAPI 가동용 앱 인프라 테스트 이미지"
+LABEL maintainer="${GITHUB_ACTOR}"
+
 # 2. 작업 디렉토리 설정
 WORKDIR /app
 # 3. 종속성 파일 먼저 복사 
