@@ -1,6 +1,9 @@
 # 1. 가벼운 파이썬 공식 이미지 사용
 FROM python:3.11-slim
 
+# 푸시한 사람의 아이디만 받아올 통로 하나만 개설
+ARG GITHUB_ACTOR="unknown"
+
 # 이미지 내부에 고유 설명 라벨 심기
 LABEL description="FastAPI 가동용 앱 인프라 테스트 이미지"
 LABEL maintainer="${GITHUB_ACTOR}"
