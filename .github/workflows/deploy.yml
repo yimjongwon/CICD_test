@@ -20,7 +20,7 @@ jobs:
         id: changes
         uses: dorny/paths-filter@v3
         with:
-          base: HEAD~
+          base: ${{ github.event.before }}
           filters: |
             docker_updated:
               - 'docker/**' # docker 폴더 내부의 모든 파일 변경 감시
