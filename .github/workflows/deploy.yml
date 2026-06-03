@@ -1,0 +1,95 @@
+# test01/.github/workflows/deploy.yml
+
+
+name: "Terraform & Ansible CI/CD(테스트 단계)"
+on:
+  push: # 자동 push
+    branches: ["main", "dev"] # main 브렌치에 push 가 될때마다 실행하겠다는 의미
+jobs:
+  deploy:
+    runs-on: ubuntu-latest # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
+    # unbuntu machine 의 환경변수에 넣어줄 값을 셋팅하는 설정
+    # 우리가 mgmt 서버에  aws configure 를 실행해서 키를 등록했듯이  1 회용 ubuntu 서버에도 동일한 작업을 해준다
+    steps:
+      # 1. 소스코드 체크아웃
+      - name: Checkout Source Code
+        uses: actions/checkout@v5
+     
+      # 2. terraform 환경 구성
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+     
+      # 3. init & plan 실행(배포 x, 테스트 단계)
+      - name: Terraform init & plan
+        working-directory: ./infra/terraform # 폴더 지정
+        run: |
+          # 푸시한 사람(github.actor)에 따라 버킷명과 테이블명을 변수에 할당
+          if [ "${{ github.actor }}" = "ShinJunhan" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.JUNHAN_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.JUNHAN_SECRET_KEY }}"
+          elif [ "${{ github.actor }}" = "KTCLIF" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.KTCLIF_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.KTCLIF_SECRET_KEY }}"
+          elif [ "${{ github.actor }}" = "tkddn3901" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.SANGWOO_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.SANGWOO_SECRET_KEY }}"
+          elif [ "${{ github.actor }}" = "yimjongwon" ]; then
+            MY_BUCKET="tfstate-bucket-24a36553"
+            MY_TABLE="DynamoDB-terraform-lock"
+            export AWS_ACCESS_KEY_ID="${{ secrets.JONGWON_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.JONGWON_SECRET_KEY }}"   
+          elif [ "${{ github.actor }}" = "zeoxixx" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.ZEOXIXX_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.ZEOXIXX_SECRET_KEY }}"
+          fi
+
+          terraform init \
+            -backend-config="bucket=${MY_BUCKET}" \
+            -backend-config="dynamodb_table=${MY_TABLE}" \
+            -backend-config="region=ap-northeast-2"
+          terraform plan
+
+      # # 4. apply (배포 단계, 예정)
+      # - name: Terraform apply
+      #   run: |
+      #     terraform apply --auto-approve
+          
+
+      # --------------------------------------------------
+      # 5. 도커 허브 로그인 (ubuntu-latest에 이미 docker가 있어서 바로 사용 가능)
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 6. 도커 이미지 빌드 및 푸시 (애플리케이션 소스에 Dockerfile이 있어야 합니다)
+      - name: Build and Push Docker Image
+        working-directory: ./docker
+        run: |
+          # 내 도커허브 계정명/이미지명:태그 형태로 빌드합니다.
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }} .
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }}
+
+      # --------------------------------------------------
+      # # 7. ansible 용 key setting
+      # - name: setup ssh key
+      #   run: |
+      #     mkdir -p ~/.ssh
+      #     echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+      #     chmod 600 ~/.ssh/id_rsa
+      #
+      # 8. ansible playbook 실행 (기존 주석)
+      # 이제 앤서블이 실서버에 접속해서 "방금 푸시한 도커 이미지 다운받아서 실행해!" 라고 명령하게 됩니다.
+      # - name: run ansible playbook
+      #   working-directory: ./infra/ansible # 폴더 지정
+      #   run: |
+      #     ansible-playbook nginx_setup.yml      

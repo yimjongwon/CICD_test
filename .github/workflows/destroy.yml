@@ -1,0 +1,58 @@
+# .github/workflows/destroy.yml
+
+
+name: "Terraform Destroy"
+on:
+  workflow_dispatch: # destory 수동 실행 버튼
+jobs:
+  terraform-destroy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 소스코드 체크아웃
+      - name: Checkout Source Code
+        uses: actions/checkout@v5
+
+      # 2. 테라폼 환경 구성
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      # 3. 개별 백엔드 및 AWS 계정 분기 후 Destroy 실행
+      - name: Terraform Init & Destroy
+        working-directory: ./infra/terraform # 폴더 지정
+        run: |
+          # 푸시하거나 버튼을 누른 사람(github.actor)에 따라 모든 정보 동적 할당
+          if [ "${{ github.actor }}" = "ShinJunhan" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.JUNHAN_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.JUNHAN_SECRET_KEY }}"
+          elif [ "${{ github.actor }}" = "KTCLIF" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.KTCLIF_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.KTCLIF_SECRET_KEY }}"
+          elif [ "${{ github.actor }}" = "tkddn3901" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.SANGWOO_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.SANGWOO_SECRET_KEY }}"
+          elif [ "${{ github.actor }}" = "yimjongwon" ]; then
+            MY_BUCKET="tfstate-bucket-24a36553"
+            MY_TABLE="DynamoDB-terraform-lock"
+            export AWS_ACCESS_KEY_ID="${{ secrets.JONGWON_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.JONGWON_SECRET_KEY }}"   
+          elif [ "${{ github.actor }}" = "zeoxixx" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.ZEOXIXX_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.ZEOXIXX_SECRET_KEY }}"
+          fi
+
+          # hcl 파일에서 주입
+          terraform init \
+            -backend-config="bucket=${MY_BUCKET}" \
+            -backend-config="dynamodb_table=${MY_TABLE}" \
+            -backend-config="region=ap-northeast-2"
+
+          # 본인 AWS 계정의 인프라만 안전하게 삭제
+          terraform destroy --auto-approve
