@@ -73,6 +73,7 @@ jobs:
 
       # 6. 도커 이미지 빌드 및 푸시 (애플리케이션 소스에 Dockerfile이 있어야 합니다)
       - name: Build and Push Docker Image
+        working-directory: ./docker
         run: |
           # 내 도커허브 계정명/이미지명:태그 형태로 빌드합니다.
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }} .
