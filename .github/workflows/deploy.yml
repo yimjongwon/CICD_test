@@ -23,8 +23,8 @@ jobs:
           base: ${{ github.event.before }}
           filters: |
             docker_updated:
-              - 'src/**'                  # 소스코드 변경 시
-              - 'Dockerfile'              # 도커 빌드 메커니즘 변경 시
+              - 'docker/src/**'                  # 소스코드 변경 시
+              - 'docker/Dockerfile'              # 도커 빌드 메커니즘 변경 시
               - 'docker-compose.yml'      # 컨테이너 구성 변경 시
               - 'docker/requirements.txt' # 파이썬 패키지 의존성 변경 시
      
