@@ -21,5 +21,5 @@ resource "aws_dynamodb_table" "terraform_lock" {
 # DynamoDB 테이블 이름
 output "dynamodb_table_name" {
   value       = aws_dynamodb_table.terraform_lock.name
-  description = "동시 실행 방지(Lock)용 DynamoDB 테이블 이름"
+  description = "동시 실행 방지(Lock) DynamoDB 테이블 이름"
 }
