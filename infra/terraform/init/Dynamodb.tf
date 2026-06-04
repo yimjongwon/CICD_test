@@ -12,6 +12,10 @@ resource "aws_dynamodb_table" "terraform_lock" {
     tags = {
         Name        = "Terraform State Lock Table"
     }
+
+    lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # DynamoDB 테이블 이름
