@@ -15,7 +15,7 @@ COPY requirements.txt .
 # 4. 패키지 설치
 RUN pip install --no-cache-dir -r requirements.txt
 # 5. 소스 코드 복사
-COPY src/ .
+COPY app/ .
 # 6. 8080 port 를 사용한다고 명시하기
 EXPOSE 8080
 # 7. FastAPI 실행 (Uvicorn 사용)
