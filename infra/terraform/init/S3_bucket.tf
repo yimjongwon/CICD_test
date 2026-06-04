@@ -41,5 +41,5 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "tfstate_crypto" {
 # S3 버킷
 output "s3_bucket_name" {
   value       = aws_s3_bucket.tfstate_bucket.id
-  description = "상태 파일이 저장될 S3 버킷의 이름"
+  description = "상태 파일 저장될 S3 버킷의 이름"
 }
