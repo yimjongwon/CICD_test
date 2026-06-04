@@ -14,6 +14,10 @@ resource "aws_s3_bucket" "tfstate_bucket" {
   # 고유한 이름을 보장하기 위해 뒤에 랜덤 16진수 접미사를 붙입니다.
   bucket        = "tfstate-bucket-${random_id.bucket_suffix.hex}"
   force_destroy = false # 실수로 상태 파일이 담긴 버킷이 통째로 날아가는 것을 방지
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # S3 버전 관리 활성화 (틀어지거나 유실되었을 때 과거 상태로 복구하기 위해 필수)
