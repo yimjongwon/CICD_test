@@ -4,9 +4,7 @@
 name: "Terraform & Ansible CI/CD(테스트 단계)"
 on:
   push: # 자동 push
-    branches: ["main", "dev"] # main 브렌치에 push 가 될때마다 실행하겠다는 의미
-  workflow_dispatch:
-    
+    branches: ["main", "dev"] # main 브렌치에 push 가 될때마다 실행하겠다는 의미   
 jobs:
   deploy:
     runs-on: ubuntu-latest # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
