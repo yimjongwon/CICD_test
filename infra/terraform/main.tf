@@ -1,4 +1,4 @@
-# lock 상태를 관리할 dynamodb 만들기
+# 상태 관리
 terraform {
     required_version = ">= 1.14.0" # github action 에서 에러나지 않게 일부 수정
     required_providers {

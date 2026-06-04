@@ -103,7 +103,6 @@ EX
 
 ### 인프라 재현 방법(How to run)
 
-
 ### 환경 변수 설정
 
 #### GitHub Actions Secrets 설정 예시
