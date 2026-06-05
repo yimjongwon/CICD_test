@@ -12,6 +12,10 @@ LABEL author="${GITHUB_ACTOR}"
 WORKDIR /app
 # 3. 종속성 파일 먼저 복사 
 COPY requirements.txt .
+
+# 🎯 [수정] jaraco.context까지 포함해서 보안 패치 버전으로 한방에 업그레이드!
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel jaraco.context
+
 # 4. 패키지 설치
 RUN pip install --no-cache-dir -r requirements.txt
 # 5. 소스 코드 복사
