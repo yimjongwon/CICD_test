@@ -109,7 +109,7 @@ jobs:
         working-directory: ./docker
         run: |
           pip install bandit
-          bandit -r ./app -ll
+          bandit -r ./app -l
 
       # ==========================================
       # 5. 도커 이미지 빌드 (변화가 있을 때만)
