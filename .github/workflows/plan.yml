@@ -22,7 +22,10 @@ jobs:
               - 'docker/Dockerfile'           # 도커 빌드 메커니즘 변경 시
               - 'docker-compose.yml'          # 컨테이너 구성 변경 시
               - 'docker/requirements.txt'     # 파이썬 패키지 의존성 변경 시
-     
+              - 'docker/app/**/*.py'          # 오직 파이썬 실행 코드(.py)가 바뀔 때만 감지!
+              - '!docker/app/**/*.md'         # ❌ 앱 폴더 내 설명서(.md) 변경은 무시!
+              - '!docker/app/**/README*'      # ❌ README 파일 변경도 무시!
+
       # 2. terraform 환경 구성
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
@@ -36,26 +39,50 @@ jobs:
             MY_TABLE=""
             export AWS_ACCESS_KEY_ID="${{ secrets.JUNHAN_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.JUNHAN_SECRET_KEY }}"
+            export TF_VAR_admin_ingress_cidr="${{ secrets.JUNHAN_IP }}"
+            export TF_VAR_tailnet_name="${{ secrets.JUNHAN_TAILNET }}"
+            export TF_VAR_tailscale_api_key="${{ secrets.JUNHAN_TS_API_KEY }}"
+            export TF_VAR_cloudflare_api_token="${{ secrets.JUNHAN_CF_TOKEN }}"
+          
           elif [ "${{ github.actor }}" = "KTCLIF" ]; then
             MY_BUCKET=""
             MY_TABLE=""
             export AWS_ACCESS_KEY_ID="${{ secrets.KTCLIF_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.KTCLIF_SECRET_KEY }}"
+            export TF_VAR_admin_ingress_cidr="${{ secrets.KTCLIF_IP }}"
+            export TF_VAR_tailnet_name="${{ secrets.KTCLIF_TAILNET }}"
+            export TF_VAR_tailscale_api_key="${{ secrets.KTCLIF_TS_API_KEY }}"
+            export TF_VAR_cloudflare_api_token="${{ secrets.KTCLIF_CF_TOKEN }}"
+          
           elif [ "${{ github.actor }}" = "tkddn3901" ]; then
             MY_BUCKET=""
             MY_TABLE=""
             export AWS_ACCESS_KEY_ID="${{ secrets.SANGWOO_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.SANGWOO_SECRET_KEY }}"
+            export TF_VAR_admin_ingress_cidr="${{ secrets.SANGWOO_IP }}"
+            export TF_VAR_tailnet_name="${{ secrets.SANGWOO_TAILNET }}"
+            export TF_VAR_tailscale_api_key="${{ secrets.SANGWOO_TS_API_KEY }}"
+            export TF_VAR_cloudflare_api_token="${{ secrets.SANGWOO_CF_TOKEN }}"
+          
           elif [ "${{ github.actor }}" = "yimjongwon" ]; then
             MY_BUCKET="tfstate-bucket-24a36553"
             MY_TABLE="DynamoDB-terraform-lock"
             export AWS_ACCESS_KEY_ID="${{ secrets.JONGWON_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.JONGWON_SECRET_KEY }}"   
+            export TF_VAR_admin_ingress_cidr="${{ secrets.JONGWON_IP }}"
+            export TF_VAR_tailnet_name="${{ secrets.JONGWON_TAILNET }}"
+            export TF_VAR_tailscale_api_key="${{ secrets.JONGWON_TS_API_KEY }}"
+            export TF_VAR_cloudflare_api_token="${{ secrets.JONGWON_CF_TOKEN }}"
+          
           elif [ "${{ github.actor }}" = "zeoxixx" ]; then
             MY_BUCKET=""
             MY_TABLE=""
             export AWS_ACCESS_KEY_ID="${{ secrets.ZEOXIXX_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.ZEOXIXX_SECRET_KEY }}"
+            export TF_VAR_admin_ingress_cidr="${{ secrets.ZEOXIXX_IP }}"
+            export TF_VAR_tailnet_name="${{ secrets.ZEOXIXX_TAILNET }}"
+            export TF_VAR_tailscale_api_key="${{ secrets.ZEOXIXX_TS_API_KEY }}"
+            export TF_VAR_cloudflare_api_token="${{ secrets.ZEOXIXX_CF_TOKEN }}"
           fi
 
           # 테라폼 초기화 및 플랜 
@@ -74,8 +101,21 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 5. 도커 이미지 빌드 및 푸시 (변화가 있을 때만)
-      - name: Build and Push Docker Image
+      # ==========================================
+      # [보안 1단계] SAST: Bandit (Python 코드 검사)
+      # ==========================================
+      - name: Run Bandit (SAST)
+        if: steps.changes.outputs.docker_updated == 'true'
+        working-directory: ./docker
+        run: |
+          pip install bandit
+          # docker 폴더 내부의 파이썬 코드를 검사 (취약점 발견 시 워크플로 중단 혹은 경고)
+          bandit -r ./app -ll # app폴더 검사(.py)
+
+      # ==========================================
+      # 5. 도커 이미지 빌드 (변화가 있을 때만)
+      # ==========================================
+      - name: Build Docker Image
         if: steps.changes.outputs.docker_updated == 'true'
         working-directory: ./docker
         run: |
@@ -83,4 +123,25 @@ jobs:
           docker build \
           --build-arg GITHUB_ACTOR="${{ github.actor }}" \
           -t ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }} .
+
+      # ==========================================
+      # [보안 2단계] Container Scan: Trivy (이미지 검사)
+      # ==========================================
+      # 이미지 내부의 OS 및 패키지 취약점을 검사합니다.
+      - name: Run Trivy vulnerability scanner
+        if: steps.changes.outputs.docker_updated == 'true'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }}'
+          format: 'table'
+          exit-code: '1' # CRITICAL, HIGH 취약점 발견 시 빌드를 실패 처리하고 배포 차단
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+      # ==========================================
+      # 6. 모든 보안 검증이 완벽히 완료된 후에만 이미지 최종 푸시
+      # ==========================================
+      - name: Push Docker Image
+        if: steps.changes.outputs.docker_updated == 'true'
+        run: |
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }}
