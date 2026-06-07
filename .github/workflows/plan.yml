@@ -123,6 +123,10 @@ jobs:
           --build-arg GITHUB_ACTOR="${{ github.actor }}" \
           -t ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }} .
 
+          # 방금 만든 숫자가 붙은 이미지를 기반으로 'latest' 이름표 하나 더 붙여주기
+          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }} \
+          ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:latest
+
       # ==========================================
       # [보안 2단계] Container Scan: Trivy (이미지 검사)
       # ==========================================
