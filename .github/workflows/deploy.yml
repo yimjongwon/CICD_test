@@ -95,6 +95,13 @@ jobs:
           # 2. App(FastAPI) 서버 세팅 및 컨테이너 구동
           ansible-playbook -i hosts deploy_app.yml --private-key=~/.ssh/lb-key.pem
 
+      # ==========================================
+      # ⏳ FastAPI 서버가 완전히 부팅될 때까지 대기 (안전장치)
+      # ==========================================
+      - name: Wait for FastAPI Server to Boot
+        run: |
+          echo "FastAPI 컨테이너 부팅 대기 중..."
+          sleep 20
 
       # ==========================================
       # 🎯 [보안 최종단계] DAST: OWASP ZAP (동적 모의 해킹)
