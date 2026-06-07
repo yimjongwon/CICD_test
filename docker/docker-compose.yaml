@@ -2,8 +2,10 @@ version: '3.8'
 
 services:
   my-web-app: # service 의 이름은 마음대로 지을 수 있다.
-    image: yimjongwon/hub-app:19 # 빌드된 이미지 이름 설정
+    image: yimjongwon/hub-app:latest # 최신 빌드된 이미지 이름 설정
     container_name: my-web-app
+    # 컴포즈가 up을 할 때마다 항상 허브에 가서 최신 이미지가 있는지 확인
+    pull_policy: always
     # host의 port를 container의 port 로 연결하는 설정
     ports:
       - "8000:8000"

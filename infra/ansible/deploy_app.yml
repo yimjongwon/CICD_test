@@ -33,5 +33,6 @@
     - name: Run Docker Compose Up
       shell: |
         cd /home/ec2-user/project2-security/docker
+        ~/.docker/cli-plugins/docker-compose pull # 배포할 때마다 허브에서 최신 이미지 갱신
         ~/.docker/cli-plugins/docker-compose down || true
         ~/.docker/cli-plugins/docker-compose up -d
