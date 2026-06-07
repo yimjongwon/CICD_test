@@ -43,32 +43,37 @@
     - name: Run Docker Compose Up
       shell: |
         cd /home/ec2-user/project2-security/docker
-        ~/.docker/cli-plugins/docker-compose pull # 배포할 때마다 허브에서 최신 이미지 갱신
-        ~/.docker/cli-plugins/docker-compose up -d
-
-
-        # FastAPI 부팅될 때까지 5초 대기 안전장치
-        sleep 5
-
-        # default.conf에 'web-blue:8000'이 들어있는지 체크
+        # 1. 앤서블이 배달한 default.conf 파일 '알맹이'에 현재 뭐가 적혀있는지 호스트에서 확인합니다.
+        # (Nginx 내부를 찌르는 게 아니라 안전하게 리눅스 파일 자체를 읽는 것입니다)
         if [ "$(cat default.conf | grep web-blue:8000)" ]; then
-            echo "현재 web-blue(Blue) 가동 중 -> web-green(Green)으로 무중단 스위칭을 시작합니다."
+            echo "현재 주소록이 web-blue를 조준하고 있습니다. -> 신버전 web-green을 먼저 켭니다."
             
+            # 2. 그린 컨테이너만 콕 집어서 먼저 가동시킵니다.
+            ~/.docker/cli-plugins/docker-compose up -d web-green
+            
+            # 3. FastAPI(그린)가 완전히 켜질 때까지 5초간 대기합니다.
+            sleep 5
+            
+            # 4. 주소록 대상을 green으로 갈아끼우고 Nginx에 무중단 반영(reload)합니다.
             sed -i 's/web-blue:8000/web-green:8000/g' default.conf
-            
-            # Nginx 컨테이너 리로드 (0초 만에 무중단 반영!)
             docker exec my-nginx nginx -s reload
             
-            # 꿀팁: 신버전 배포가 끝났으니, 옛날 버전은 종료해서 서버 자원을 아낍니다.
+            # 5. 이제 볼일 끝난 구버전(blue)을 안전하게 종료합니다.
             ~/.docker/cli-plugins/docker-compose stop web-blue
         else
-            echo "현재 web-green(Green) 가동 중 -> web-blue(Blue)로 무중단 스위칭을 시작합니다."
+            echo "현재 주소록이 web-green을 조준하고 있습니다. -> 신버전 web-blue를 먼저 켭니다."
+            
+            ~/.docker/cli-plugins/docker-compose up -d web-blue
+            sleep 5
             
             sed -i 's/web-green:8000/web-blue:8000/g' default.conf
-            
             docker exec my-nginx nginx -s reload
+            
             ~/.docker/cli-plugins/docker-compose stop web-green
         fi
+
+        # 6. 마지막으로 전체 인프라 상태(Nginx 등)의 싱크를 맞춰줍니다.
+        ~/.docker/cli-plugins/docker-compose up -d
       args:
         executable: /bin/bash # if 조건문이 온전한 bash 쉘 문법으로 돌도록 명시
 
