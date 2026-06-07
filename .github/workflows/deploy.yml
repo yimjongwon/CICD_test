@@ -9,6 +9,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
+    permissions:
+      contents: read
+      issues: write
     steps:
       # 1. 소스코드 체크아웃
       - name: Checkout Source Code
