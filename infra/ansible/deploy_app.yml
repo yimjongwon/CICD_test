@@ -43,9 +43,8 @@
     - name: Run Docker Compose Up
       shell: |
         cd /home/ec2-user/project2-security/docker
-        # 1. 앤서블이 배달한 default.conf 파일 '알맹이'에 현재 뭐가 적혀있는지 호스트에서 확인합니다.
-        # (Nginx 내부를 찌르는 게 아니라 안전하게 리눅스 파일 자체를 읽는 것입니다)
-        if [ "$(cat default.conf | grep web-blue:8000)" ]; then
+        # 파일 말고, 진짜 도커한테 블루 켜놨는지 물어봄
+        if [ "$(docker ps --filter "name=web-blue" --filter "status=running" -q)" ]; then
             echo "현재 주소록이 web-blue를 조준하고 있습니다. -> 신버전 web-green을 먼저 켭니다."
             
             # 2. 그린 컨테이너만 콕 집어서 먼저 가동시킵니다.

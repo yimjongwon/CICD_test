@@ -25,12 +25,10 @@ def read_fortune():
 def get_posts():
     # 데이터베이스 장부 연결 및 커서 개설 (딕셔너리 형태로 변환 래핑)
     conn = psycopg2.connect(DB_URL)
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-    
-    # member 레코드 긁어오기
-    cursor.execute("SELECT * FROM member;")
-    rows = cursor.fetchall()
-    
-    cursor.close()
-    conn.close()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute("SELECT * FROM member;")
+            rows = cursor.fetchall()
+    finally:
+        conn.close()
     return {"status": "success", "data": rows}
