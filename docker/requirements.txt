@@ -3,3 +3,4 @@ uvicorn>=0.28.0
 # 🎯 Trivy가 지적한 하위 의존성 패키지들을 보안 패치가 완료된 버전으로 강제 선언
 wheel>=0.46.2
 jaraco.context>=6.1.0
+psycopg2-binary

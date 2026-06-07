@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   my-web-app: # service 의 이름은 마음대로 지을 수 있다.
-    image: yimjongwon/hub-app:1.1 # 빌드된 이미지 이름 설정
+    image: yimjongwon/hub-app:17 # 빌드된 이미지 이름 설정
     container_name: my-web-app
     # host의 port를 container의 port 로 연결하는 설정
     ports:
