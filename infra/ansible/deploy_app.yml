@@ -47,12 +47,12 @@
         ~/.docker/cli-plugins/docker-compose up -d
 
 
-        # 앤서블이 서버에 배달된 default.conf의 8001 존재 여부를 체크해 핑퐁 스위칭을 합니다.
-        if [ "$(cat default.conf | grep 8001)" ]; then
-            echo "현재 8001(Blue) 가동 중 -> 8002(Green)로 무중단 스위칭을 시작합니다."
+        # default.conf에 'web-blue:8000'이 들어있는지 체크
+        if [ "$(cat default.conf | grep web-blue:8000)" ]; then
+            echo "현재 web-blue(Blue) 가동 중 -> web-green(Green)으로 무중단 스위칭을 시작합니다."
             
             # default.conf 안의 타깃 주소를 8002로 갈아끼우기
-            sed -i 's/127.0.0.1:8001/127.0.0.1:8002/g' default.conf
+            sed -i 's/web-blue:8000/web-green:8000/g' default.conf
             
             # Nginx 컨테이너 리로드 (0초 만에 무중단 반영!)
             docker exec my-nginx nginx -s reload
@@ -60,11 +60,11 @@
             # 꿀팁: 신버전 배포가 끝났으니, 옛날 버전(8001)은 종료해서 서버 자원을 아낍니다.
             ~/.docker/cli-plugins/docker-compose stop web-blue
         else
-            echo "현재 8002(Green) 가동 중 -> 8001(Blue)로 무중단 스위칭을 시작합니다."
+            echo "현재 web-green(Green) 가동 중 -> web-blue(Blue)로 무중단 스위칭을 시작합니다."
             
-            sed -i 's/127.0.0.1:8002/127.0.0.1:8001/g' default.conf
+            sed -i 's/web-green:8000/web-blue:8000/g' default.conf
+            
             docker exec my-nginx nginx -s reload
-            
             ~/.docker/cli-plugins/docker-compose stop web-green
         fi
       args:
