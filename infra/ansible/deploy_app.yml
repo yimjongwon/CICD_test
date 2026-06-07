@@ -1,0 +1,38 @@
+# 파일 위치: ./infra/ansible/deploy_app.yml
+- name: Deploy FastAPI Web App via Docker Compose
+  hosts: app
+  become: true # sudo 권한으로 실행
+  tasks:
+
+    # 1. 서버 내부에 도커 컴포즈 파일이 들어갈 폴더를 만듭니다.
+    - name: Create app directory on EC2
+      file:
+        path: /home/ec2-user/project2-security/docker
+        state: directory
+        owner: ec2-user
+        group: ec2-user
+
+    # 2. template 모듈을 사용해 변수를 IP로 치환한 후, 설명서 딱 한 장만 프로젝트 폴더 밑에 배달합니다.
+    - name: Copy docker-compose.yml to App Server
+      template:
+        src: ../../docker/docker-compose.yaml
+        dest: /home/ec2-user/project2-security/docker/docker-compose.yml
+        owner: ec2-user
+        group: ec2-user
+        mode: '0644'
+
+    # 3. docker-compose 가 기본 탑재되어 있지 않을시 최신 V2 플러그인을 다운받아 줍니다.
+    - name: Install Docker Compose V2 Plugin if missing
+      shell: |
+        mkdir -p ~/.docker/cli-plugins/
+        curl -SL https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose
+        chmod +x ~/.docker/cli-plugins/docker-compose
+      args:
+        creates: ~/.docker/cli-plugins/docker-compose # 이미 파일이 있으면 다운로드를 건너뜁니다.
+
+    # 4. 마지막으로 Ansible이 원격 서버에서 실행 버튼을 누릅니다.
+    - name: Run Docker Compose Up
+      shell: |
+        cd /home/ec2-user/project2-security/docker
+        ~/.docker/cli-plugins/docker-compose down || true
+        ~/.docker/cli-plugins/docker-compose up -d

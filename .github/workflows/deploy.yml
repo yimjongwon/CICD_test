@@ -61,18 +61,34 @@ jobs:
           terraform apply --auto-approve
        
           
-
       # --------------------------------------------------
-      # 4. ansible 용 key setting
+      # 4. ansible 용 key setting (lb-key.pem)
+      # --------------------------------------------------
       # - name: setup ssh key
       #   run: |
       #     mkdir -p ~/.ssh
-      #     echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-      #     chmod 600 ~/.ssh/id_rsa
+      #     echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/lb-key.pem
+      #     chmod 600 ~/.ssh/lb-key.pem
       #
-      # 5. ansible playbook 실행 (기존 주석)
+      # 5. ansible playbook 실행 
       # 이제 앤서블이 실서버에 접속해서 "방금 푸시한 도커 이미지 다운받아서 실행해!" 라고 명령하게 됩니다.
       # - name: run ansible playbook
       #   working-directory: ./infra/ansible # 폴더 지정
       #   run: |
-      #     ansible-playbook nginx_setup.yml      
+      #     ansible-playbook nginx_setup.yml --private-key=~/.ssh/lb-key.pem     
+
+
+      # ==========================================
+      # 🎯 [보안 최종단계] DAST: OWASP ZAP (동적 모의 해킹)
+      # ==========================================
+      # 앤서블이 서버를 무사히 가동했으므로, 살아있는 URL을 향해 공격을 찌릅니다.
+      - name: Run OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          # 💡 [필독] AWS 로드밸런서(ALB) DNS 주소나 연동된 도메인 주소를 적어주세요!
+          # 예: 'http://my-load-balancer-1234.ap-northeast-2.elb.amazonaws.com'
+          target: 'http://your-alb-or-domain-address.com'
+          
+          # 만약 특정 취약점이 나왔을 때 파이프라인을 실패(레드카드)로 만들고 싶다면 true로 둡니다.
+          # 처음 테스트할 때는 어떤 결과가 나오는지 보기 위해 false로 두고 관측해도 좋습니다.
+          fail_action: true
