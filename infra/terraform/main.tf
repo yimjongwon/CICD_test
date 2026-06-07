@@ -71,6 +71,15 @@ resource "aws_security_group" "mini_sg" {
     cidr_blocks = ["0.0.0.0/0"] # 테스트 후 본인 IP로 제한 추천
   }
 
+  # Nginx 리버스 프록시 접속용 HTTP 80번 포트 오픈!
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+
   # FastAPI 접속용
   ingress {
     from_port   = 8000
