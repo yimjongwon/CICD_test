@@ -3,6 +3,17 @@
   hosts: db
   become: true
   tasks:
+    # DB 서버에 도커가 완벽히 설치되고 켜질 때까지 최대 50초간 대기합니다.
+    - name: Wait for Docker to be installed and running
+      ansible.builtin.service:
+        name: docker
+        state: started
+      register: docker_status
+      until: docker_status is success
+      retries: 10
+      delay: 5
+
+
     # 1. DB 서버 EC2 내부에 SQL 파일이 임시로 머물 폴더를 만듭니다.
     - name: Create temporary directory for SQL on DB server
       file:
