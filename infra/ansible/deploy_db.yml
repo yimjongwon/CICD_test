@@ -1,3 +1,4 @@
+# 파일 위치: ./infra/ansible/deploy_db.yml
 - name: Deploy PostgreSQL Container to DB Server
   hosts: db
   become: true
