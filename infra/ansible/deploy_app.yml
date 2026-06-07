@@ -1,0 +1,83 @@
+# 파일 위치: ./infra/ansible/deploy_app.yml
+- name: Deploy FastAPI Web App via Docker Compose
+  hosts: app
+  become: true # sudo 권한으로 실행
+  tasks:
+    # 1. 서버 내부에 도커 컴포즈 파일이 들어갈 폴더를 만듭니다.
+    - name: Create app directory on EC2
+      file:
+        path: /home/ec2-user/project2-security/docker
+        state: directory
+        owner: ec2-user
+        group: ec2-user
+
+    # 2. template 모듈을 사용해 변수를 IP로 치환한 후, 설명서 딱 한 장만 프로젝트 폴더 밑에 배달합니다.
+    - name: Copy docker-compose.yml to App Server
+      template:
+        src: ../../docker/docker-compose.yaml
+        dest: /home/ec2-user/project2-security/docker/docker-compose.yml
+        owner: ec2-user
+        group: ec2-user
+        mode: '0644'
+    
+    # 📌 [새로 추가] 2-2. 정석대로 원본은 두고 알맹이만 담은 default.conf를 배달합니다.
+    - name: Copy default.conf to App Server
+      template:
+        src: ../../docker/default.conf  # 내 로컬(컴퓨터)에 새로 만들어둘 파일
+        dest: /home/ec2-user/project2-security/docker/default.conf
+        owner: ec2-user
+        group: ec2-user
+        mode: '0644'
+
+    # 3. docker-compose 가 기본 탑재되어 있지 않을시 최신 V2 플러그인을 다운받아 줍니다.
+    - name: Install Docker Compose V2 Plugin if missing
+      shell: |
+        mkdir -p ~/.docker/cli-plugins/
+        curl -SL https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose
+        chmod +x ~/.docker/cli-plugins/docker-compose
+      args:
+        creates: ~/.docker/cli-plugins/docker-compose # 이미 파일이 있으면 다운로드를 건너뜁니다.
+
+    # 4. 마지막으로 Ansible이 원격 서버에서 실행 버튼을 누릅니다.
+    # 🔵🟢 구버전을 끄지 않고 무중단 블루-그린 스위칭을 진행합니다.
+    - name: Run Docker Compose Up
+      shell: |
+        cd /home/ec2-user/project2-security/docker
+        # 파일 말고, 진짜 도커한테 블루 켜놨는지 물어봄
+        if [ "$(docker ps --filter "name=web-blue" --filter "status=running" -q)" ]; then
+            echo "현재 주소록이 web-blue를 조준하고 있습니다. -> 신버전 web-green을 먼저 켭니다."
+            
+            # 2. 그린 컨테이너만 콕 집어서 먼저 가동시킵니다.
+            ~/.docker/cli-plugins/docker-compose up -d web-green
+            
+            # 3. FastAPI(그린)가 완전히 켜질 때까지 5초간 대기합니다.
+            sleep 5
+            
+            # 4. 주소록 대상을 green으로 갈아끼우고 Nginx에 무중단 반영(reload)합니다.
+            sed -i 's/web-blue:8000/web-green:8000/g' default.conf
+            docker exec my-nginx nginx -s reload
+            
+            # 5. 이제 볼일 끝난 구버전(blue)을 안전하게 종료합니다.
+            ~/.docker/cli-plugins/docker-compose stop web-blue
+        else
+            echo "현재 주소록이 web-green을 조준하고 있습니다. -> 신버전 web-blue를 먼저 켭니다."
+            
+            ~/.docker/cli-plugins/docker-compose up -d web-blue
+            sleep 5
+            
+            # inode 유지하며 파일 내용 변경
+            sed 's/web-green:8000/web-blue:8000/g' default.conf > default.conf.tmp && cat default.conf.tmp > default.conf && rm default.conf.tmp
+            docker exec my-nginx nginx -s reload
+            
+            ~/.docker/cli-plugins/docker-compose stop web-green
+        fi
+
+        # 6. 마지막으로 전체 인프라 상태(Nginx 등)의 싱크를 맞춰줍니다.
+        ~/.docker/cli-plugins/docker-compose up -d
+      args:
+        executable: /bin/bash # if 조건문이 온전한 bash 쉘 문법으로 돌도록 명시
+
+
+      
+
+      
