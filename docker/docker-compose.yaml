@@ -1,16 +1,39 @@
 version: '3.8'
 
 services:
-  my-web-app: # service 의 이름은 마음대로 지을 수 있다.
+  # 🔵 A팀 (Blue)
+  web-blue:
     image: yimjongwon/hub-app:latest # 최신 빌드된 이미지 이름 설정
-    container_name: my-web-app
-    # 컴포즈가 up을 할 때마다 항상 허브에 가서 최신 이미지가 있는지 확인
+    container_name: web-blue
+    # 허브에 가서 최신 이미지가 있는지 확인
     pull_policy: always
-    # host의 port를 container의 port 로 연결하는 설정
+    # 호스트의 8001번으로 오면 컨테이너의 8000번(FastAPI)으로 연결
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       DB_URL: "postgresql://scott:tiger@{{ hostvars['db_server']['ansible_host'] }}:5432/scott_db"
     restart: always
 
-  
+  # 🟢 B팀 (Green)
+  web-green:
+    image: yimjongwon/hub-app:latest
+    container_name: web-green
+    pull_policy: always
+    # 호스트의 8002번으로 오면 컨테이너의 8000번(FastAPI)으로 연결
+    ports:
+      - "8002:8000"
+    environment:
+      DB_URL: "postgresql://scott:tiger@{{ hostvars['db_server']['ansible_host'] }}:5432/scott_db"
+    restart: always
+
+# Nginx 
+  my-nginx:
+    image: nginx:latest
+    container_name: my-nginx
+    # 사용자는 무조건 80번(HTTP 기본 포트)으로 접속
+    ports:
+      - "80:80"
+    volumes:
+      # 수동으로 만든 default.conf를 컨테이너 내부에 읽기 전용(:ro)으로 주입
+      - ./default.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: always

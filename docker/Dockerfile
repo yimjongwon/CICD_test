@@ -20,8 +20,8 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel jaraco.context
 RUN pip install --no-cache-dir -r requirements.txt
 # 5. 소스 코드 복사
 COPY app/ .
-# 6. 8080 port 를 사용한다고 명시하기
-EXPOSE 8080
+# 6. 8000 port 를 사용한다고 명시하기
+EXPOSE 8000
 # 7. FastAPI 실행 (Uvicorn 사용)
 # --host 0.0.0.0은 컨테이너 외부 연결을 위해 필수입니다!
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

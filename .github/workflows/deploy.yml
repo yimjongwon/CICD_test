@@ -106,7 +106,7 @@ jobs:
         with:
           # 💡 [필독] AWS 로드밸런서(ALB) DNS 주소나 연동된 도메인 주소를 적어주세요!
           # 예: 'http://my-load-balancer-1234.ap-northeast-2.elb.amazonaws.com'
-          target: 'http://${{ env.APP_IP }}:8000'
+          target: 'http://${{ env.APP_IP }}:80'
           
           # 만약 특정 취약점이 나왔을 때 파이프라인을 실패(레드카드)로 만들고 싶다면 true로 둡니다.
           # 처음 테스트할 때는 어떤 결과가 나오는지 보기 위해 false로 두고 관측해도 좋습니다.

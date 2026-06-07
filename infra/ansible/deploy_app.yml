@@ -19,6 +19,15 @@
         owner: ec2-user
         group: ec2-user
         mode: '0644'
+    
+    # 📌 [새로 추가] 2-2. 정석대로 원본은 두고 알맹이만 담은 default.conf를 배달합니다.
+    - name: Copy default.conf to App Server
+      template:
+        src: ../../docker/default.conf  # 내 로컬(컴퓨터)에 새로 만들어둘 파일
+        dest: /home/ec2-user/project2-security/docker/default.conf
+        owner: ec2-user
+        group: ec2-user
+        mode: '0644'
 
     # 3. docker-compose 가 기본 탑재되어 있지 않을시 최신 V2 플러그인을 다운받아 줍니다.
     - name: Install Docker Compose V2 Plugin if missing
@@ -30,9 +39,38 @@
         creates: ~/.docker/cli-plugins/docker-compose # 이미 파일이 있으면 다운로드를 건너뜁니다.
 
     # 4. 마지막으로 Ansible이 원격 서버에서 실행 버튼을 누릅니다.
+    # 🔵🟢 구버전을 끄지 않고 무중단 블루-그린 스위칭을 진행합니다.
     - name: Run Docker Compose Up
       shell: |
         cd /home/ec2-user/project2-security/docker
         ~/.docker/cli-plugins/docker-compose pull # 배포할 때마다 허브에서 최신 이미지 갱신
-        ~/.docker/cli-plugins/docker-compose down || true
         ~/.docker/cli-plugins/docker-compose up -d
+
+
+        # 앤서블이 서버에 배달된 default.conf의 8001 존재 여부를 체크해 핑퐁 스위칭을 합니다.
+        if [ "$(cat default.conf | grep 8001)" ]; then
+            echo "현재 8001(Blue) 가동 중 -> 8002(Green)로 무중단 스위칭을 시작합니다."
+            
+            # default.conf 안의 타깃 주소를 8002로 갈아끼우기
+            sed -i 's/127.0.0.1:8001/127.0.0.1:8002/g' default.conf
+            
+            # Nginx 컨테이너 리로드 (0초 만에 무중단 반영!)
+            docker exec my-nginx nginx -s reload
+            
+            # 꿀팁: 신버전 배포가 끝났으니, 옛날 버전(8001)은 종료해서 서버 자원을 아낍니다.
+            ~/.docker/cli-plugins/docker-compose stop web-blue
+        else
+            echo "현재 8002(Green) 가동 중 -> 8001(Blue)로 무중단 스위칭을 시작합니다."
+            
+            sed -i 's/127.0.0.1:8002/127.0.0.1:8001/g' default.conf
+            docker exec my-nginx nginx -s reload
+            
+            ~/.docker/cli-plugins/docker-compose stop web-green
+        fi
+      args:
+        executable: /bin/bash # if 조건문이 온전한 bash 쉘 문법으로 돌도록 명시
+
+
+      
+
+      
