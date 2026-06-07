@@ -147,10 +147,10 @@ resource "local_file" "ansible_inventory" {
   # 파일에 들어갈 내용을 템플릿 형태로 작성합니다.
   content = <<-EOT
     [app]
-    app_server ansible_host=${aws_instance.app_server.public_ip} ansible_user=ec2-user
+    app_server ansible_host=${aws_instance.app_server.public_ip} ansible_user=ec2-user ansible_ssh_common_args='-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
 
     [db]
-    db_server ansible_host=${aws_instance.db_server.public_ip} ansible_user=ec2-user
+    db_server ansible_host=${aws_instance.db_server.public_ip} ansible_user=ec2-user ansible_ssh_common_args='-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
   EOT
 
   # 인스턴스가 다 켜지고 IP가 완전히 확정된 후에 파일이 써지도록 안전장치를 겁니다.
