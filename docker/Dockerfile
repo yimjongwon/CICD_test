@@ -24,4 +24,4 @@ COPY app/ .
 EXPOSE 8080
 # 7. FastAPI 실행 (Uvicorn 사용)
 # --host 0.0.0.0은 컨테이너 외부 연결을 위해 필수입니다!
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
