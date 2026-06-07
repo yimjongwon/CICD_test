@@ -65,7 +65,8 @@
             ~/.docker/cli-plugins/docker-compose up -d web-blue
             sleep 5
             
-            sed -i 's/web-green:8000/web-blue:8000/g' default.conf
+            # inode 유지하며 파일 내용 변경
+            sed 's/web-green:8000/web-blue:8000/g' default.conf > default.conf.tmp && cat default.conf.tmp > default.conf && rm default.conf.tmp
             docker exec my-nginx nginx -s reload
             
             ~/.docker/cli-plugins/docker-compose stop web-green
