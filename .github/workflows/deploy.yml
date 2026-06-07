@@ -101,7 +101,8 @@ jobs:
       # ==========================================
       # 앤서블이 서버를 무사히 가동했으므로, 살아있는 URL을 향해 공격을 찌릅니다.
       - name: Run OWASP ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.12.0
+      # 변경: 깃허브 API 변경점이 반영된 최신 안정 버전으로 교체합니다.
+        uses: zaproxy/action-baseline@v0.14.0
         with:
           # 💡 [필독] AWS 로드밸런서(ALB) DNS 주소나 연동된 도메인 주소를 적어주세요!
           # 예: 'http://my-load-balancer-1234.ap-northeast-2.elb.amazonaws.com'
