@@ -14,7 +14,7 @@
     # 2. 내 컴퓨터에 있는 init.sql 파일을 DB 서버의 임시 폴더로 배달합니다.
     - name: Copy init.sql to DB Server
       copy:
-        src: "../../docker/init.sql"  # 로컬의 SQL 파일 경로(프로젝트명확인)
+        src: "{{ playbook_dir }}/../../docker/init.sql" # 로컬의 SQL 파일 경로(프로젝트명확인)
         dest: /home/ec2-user/db_init/init.sql
         owner: ec2-user
         group: ec2-user
