@@ -24,6 +24,8 @@ jobs:
       - name: Terraform Init and Apply
         working-directory: ./infra/terraform # 폴더 지정
         run: |
+          export TF_VAR_route53_zone_name=""
+          
           # 푸시한 사람(github.actor)에 따라 버킷명과 테이블명, , AWS 키 설정
           if [ "${{ github.actor }}" = "ShinJunhan" ]; then
             MY_BUCKET=""
@@ -68,6 +70,7 @@ jobs:
             export TF_VAR_tailscale_api_key="${{ secrets.JONGWON_TS_API_KEY }}"
             export TF_VAR_cloudflare_api_token="${{ secrets.JONGWON_CF_TOKEN }}"
             export TF_VAR_domain_name="${{ secrets.JONGWON_DOMAIN }}"
+            export TF_VAR_route53_zone_name="${{ secrets.JONGWON_DOMAIN }}"
 
           elif [ "${{ github.actor }}" = "zeoxixx" ]; then
             MY_BUCKET=""
