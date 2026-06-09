@@ -34,7 +34,8 @@ jobs:
             export TF_VAR_tailnet_name="${{ secrets.JUNHAN_TAILNET }}"
             export TF_VAR_tailscale_api_key="${{ secrets.JUNHAN_TS_API_KEY }}"
             export TF_VAR_cloudflare_api_token="${{ secrets.JUNHAN_CF_TOKEN }}"
-          
+            export TF_VAR_domain_name="${{ secrets.JUNHAN_DOMAIN }}"
+
           elif [ "${{ github.actor }}" = "KTCLIF" ]; then
             MY_BUCKET=""
             MY_TABLE=""
@@ -44,7 +45,8 @@ jobs:
             export TF_VAR_tailnet_name="${{ secrets.KTCLIF_TAILNET }}"
             export TF_VAR_tailscale_api_key="${{ secrets.KTCLIF_TS_API_KEY }}"
             export TF_VAR_cloudflare_api_token="${{ secrets.KTCLIF_CF_TOKEN }}"
-          
+            export TF_VAR_domain_name="${{ secrets.KTCLIF_DOMAIN }}"
+
           elif [ "${{ github.actor }}" = "tkddn3901" ]; then
             MY_BUCKET=""
             MY_TABLE=""
@@ -54,7 +56,8 @@ jobs:
             export TF_VAR_tailnet_name="${{ secrets.SANGWOO_TAILNET }}"
             export TF_VAR_tailscale_api_key="${{ secrets.SANGWOO_TS_API_KEY }}"
             export TF_VAR_cloudflare_api_token="${{ secrets.SANGWOO_CF_TOKEN }}"
-          
+            export TF_VAR_domain_name="${{ secrets.SANGWOO_DOMAIN }}"
+
           elif [ "${{ github.actor }}" = "yimjongwon" ]; then
             MY_BUCKET="tfstate-bucket-348876a9"
             MY_TABLE="DynamoDB-terraform-lock"
@@ -75,6 +78,7 @@ jobs:
             export TF_VAR_tailnet_name="${{ secrets.ZEOXIXX_TAILNET }}"
             export TF_VAR_tailscale_api_key="${{ secrets.ZEOXIXX_TS_API_KEY }}"
             export TF_VAR_cloudflare_api_token="${{ secrets.ZEOXIXX_CF_TOKEN }}"
+            export TF_VAR_domain_name="${{ secrets.ZEOXIXX_DOMAIN }}"
           fi
 
           # 최신 빌드된 이미지를 반영하도록 테라폼 변수 주입 지정
