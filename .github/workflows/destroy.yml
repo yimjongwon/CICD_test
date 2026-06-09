@@ -67,7 +67,7 @@ jobs:
             export TF_VAR_cloudflare_api_token="${{ secrets.JONGWON_CF_TOKEN }}"
             export TF_VAR_domain_name="${{ secrets.JONGWON_DOMAIN }}"
             export TF_VAR_route53_zone_name="${{ secrets.JONGWON_DOMAIN }}"
-            
+
           elif [ "${{ github.actor }}" = "zeoxixx" ]; then
             MY_BUCKET=""
             MY_TABLE=""
@@ -85,6 +85,12 @@ jobs:
             -backend-config="bucket=${MY_BUCKET}" \
             -backend-config="dynamodb_table=${MY_TABLE}" \
             -backend-config="region=ap-northeast-2"
+
+          # 🎯 [여기에 추가] 테라폼 장부에서 유령 Tailscale 장치 강제 제거
+          # 이렇게 하면 테라폼이 Tailscale에 조회를 안 하고 바로 패스합니다.
+          terraform state rm data.tailscale_device.bastion_device || true
+          terraform state rm data.tailscale_device.db_device || true
+
 
           # 본인 AWS 계정의 인프라만 안전하게 삭제
           terraform destroy --auto-approve
