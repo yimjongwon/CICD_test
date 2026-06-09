@@ -39,7 +39,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "db_backup" {
       sse_algorithm = "AES256"
     }
   }
-  depends_on = [aws_s3_bucket.db_backup]
 }
 
 # ======================================================================
