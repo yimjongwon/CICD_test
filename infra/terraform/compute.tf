@@ -107,7 +107,7 @@ resource "aws_instance" "bastion" {
     hostnamectl set-hostname "${var.project}-bastion"
     
     # 외부망 통신 대기
-    until ping -c 1 8.8.8.8 &> /dev/null; do sleep 5; done
+    until ping -c 1 -w 1 8.8.8.8 &> /dev/null; do sleep 3; done
     
     # Tailscale 설치 및 서비스 가동
     curl -fsSL https://tailscale.com/install.sh | sh
@@ -279,7 +279,7 @@ resource "aws_instance" "db" {
     #!/bin/bash
     exec > >(tee -a /var/log/user_data_tailscale.log) 2>&1
     hostnamectl set-hostname "${var.project}-db"
-    until ping -c 1 8.8.8.8 &> /dev/null; do sleep 5; done
+    until ping -c 1 -w 1 8.8.8.8 &> /dev/null; do sleep 3; done
     curl -fsSL https://tailscale.com/install.sh | sh
     systemctl enable --now tailscaled
     tailscale up --authkey=${tailscale_tailnet_key.ec2_join.key} \
