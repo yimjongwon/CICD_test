@@ -65,7 +65,7 @@ jobs:
             export TF_VAR_cloudflare_api_token="${{ secrets.SANGWOO_CF_TOKEN }}"
           
           elif [ "${{ github.actor }}" = "yimjongwon" ]; then
-            MY_BUCKET="tfstate-bucket-348876a9"
+            MY_BUCKET="tfstate-bucket-24a36553"
             MY_TABLE="DynamoDB-terraform-lock"
             export AWS_ACCESS_KEY_ID="${{ secrets.JONGWON_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.JONGWON_SECRET_KEY }}"   
@@ -94,7 +94,6 @@ jobs:
 
       # 4. 도커 허브 로그인 (변화가 있을 때만)
       - name: Login to Docker Hub
-        # 변화가있을때만 로그인하겠다
         if: steps.changes.outputs.docker_updated == 'true'
         uses: docker/login-action@v3
         with:
@@ -112,7 +111,7 @@ jobs:
           bandit -r ./app -l
 
       # ==========================================
-      # 5. 도커 이미지 빌드 (변화가 있을 때만)
+      # 5. 도커 이미지 빌드 (변화가 있을 때만) - 📌 hub-app -> lock-app 변경
       # ==========================================
       - name: Build Docker Image
         if: steps.changes.outputs.docker_updated == 'true'
@@ -121,32 +120,30 @@ jobs:
           # 내 도커허브 계정명/이미지명:태그 형태로 빌드합니다.
           docker build \
           --build-arg GITHUB_ACTOR="${{ github.actor }}" \
-          -t ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }} .
+          -t ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }} .
 
           # 방금 만든 숫자가 붙은 이미지를 기반으로 'latest' 이름표 하나 더 붙여주기
-          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }} \
-          ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:latest
+          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }} \
+          ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest
 
       # ==========================================
-      # [보안 2단계] Container Scan: Trivy (이미지 검사)
+      # [보안 2단계] Container Scan: Trivy (이미지 검사) - 📌 hub-app -> lock-app 변경
       # ==========================================
-      # 이미지 내부의 OS 및 패키지 취약점을 검사합니다.
       - name: Run Trivy vulnerability scanner
         if: steps.changes.outputs.docker_updated == 'true'
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }}'
+          image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }}'
           format: 'table'
           exit-code: '1' # CRITICAL, HIGH 취약점 발견 시 빌드를 실패 처리하고 배포 차단
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
 
       # ==========================================
-      # 6. 모든 보안 검증이 완벽히 완료된 후에만 이미지 최종 푸시
+      # 6. 모든 보안 검증이 완벽히 완료된 후에만 이미지 최종 푸시 - 📌 hub-app -> lock-app 변경
       # ==========================================
       - name: Push Docker Image
         if: steps.changes.outputs.docker_updated == 'true'
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }}
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:latest
-
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest

@@ -1,4 +1,15 @@
-# --------------------------------------------------
+# ----------------------------------------------------------------
+# 파일 위치 : ~/project2-security/infra/terraform/init/S3_bucket.tf
+# ----------------------------------------------------------------
+
+# 파일 최상단 — 버전 명시 (main 프로젝트와 aws 버전 통일)
+terraform {
+  required_version = ">= 1.5.0, < 2.0.0"
+  required_providers {
+    aws    = { source = "hashicorp/aws",    version = "~> 5.0" }
+    random = { source = "hashicorp/random", version = "~> 3.0" }  # random_id 용
+  }
+}
 
 provider "aws" {
   region = "ap-northeast-2" # 서울 리전
@@ -36,6 +47,15 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "tfstate_crypto" {
       sse_algorithm = "AES256"
     }
   }
+}
+
+# 버킷 정의 아래 — 퍼블릭 접근 전면 차단 (state 버킷이라 필수)
+resource "aws_s3_bucket_public_access_block" "tfstate" {
+  bucket                  = aws_s3_bucket.tfstate_bucket.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 # S3 버킷

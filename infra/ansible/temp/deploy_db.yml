@@ -1,0 +1,51 @@
+# # 파일 위치: ./infra/ansible/deploy_db.yml
+# - name: Deploy PostgreSQL Container to DB Server
+#   hosts: db
+#   become: true
+#   tasks:
+#     # DB 서버에 도커가 완벽히 설치되고 켜질 때까지 최대 50초간 대기합니다.
+#     - name: Wait for Docker to be installed and running
+#       ansible.builtin.service:
+#         name: docker
+#         state: started
+#       register: docker_status
+#       until: docker_status is success
+#       retries: 10
+#       delay: 5
+
+
+#     # 1. DB 서버 EC2 내부에 SQL 파일이 임시로 머물 폴더를 만듭니다.
+#     - name: Create temporary directory for SQL on DB server
+#       file:
+#         path: /home/ec2-user/db_init
+#         state: directory
+#         owner: ec2-user
+#         group: ec2-user
+
+#     # 2. 내 컴퓨터에 있는 init.sql 파일을 DB 서버의 임시 폴더로 배달합니다.
+#     - name: Copy init.sql to DB Server
+#       copy:
+#         src: "{{ playbook_dir }}/../../docker/init.sql" # 로컬의 SQL 파일 경로(프로젝트명확인)
+#         dest: /home/ec2-user/db_init/init.sql
+#         owner: ec2-user
+#         group: ec2-user
+#         mode: '0644'
+
+#     # 3. 기존에 돌고 있던 컨테이너가 있다면 안전하게 제거
+#     - name: Stop and remove old DB container if exists
+#       shell: |
+#         docker stop my-postgres || true
+#         docker rm my-postgres || true
+
+#     # 볼륨 설정과 초기화 SQL 파일 연동, 도커 명령어로 직접 가동
+#     - name: Run PostgreSQL Container with init.sql
+#       shell: |
+#         docker run -d \
+#           --name my-postgres \
+#           -p 5432:5432 \
+#           -e POSTGRES_USER=scott \
+#           -e POSTGRES_PASSWORD=tiger \
+#           -e POSTGRES_DB=scott_db \
+#           -v pgdata:/var/lib/postgresql/data \
+#           -v /home/ec2-user/db_init/init.sql:/docker-entrypoint-initdb.d/init.sql \
+#           postgres:15

@@ -1,0 +1,98 @@
+name: "Terraform Apply(수동)"
+on:
+  workflow_dispatch: # 수동 실행 버튼
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      # 1. 소스코드 체크아웃
+      - name: Checkout Source Code
+        uses: actions/checkout@v5
+      
+      # 2. terraform 환경 구성
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+     
+      # 3. terraform Init & Apply
+      - name: Terraform Init and Apply
+        working-directory: ./infra/terraform # 폴더 지정
+        run: |
+          if [ "${{ github.actor }}" = "ShinJunhan" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.JUNHAN_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.JUNHAN_SECRET_KEY }}"
+          elif [ "${{ github.actor }}" = "KTCLIF" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.KTCLIF_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.KTCLIF_SECRET_KEY }}"
+          elif [ "${{ github.actor }}" = "tkddn3901" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.SANGWOO_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.SANGWOO_SECRET_KEY }}"
+          elif [ "${{ github.actor }}" = "yimjongwon" ]; then
+            MY_BUCKET="tfstate-bucket-24a36553"
+            MY_TABLE="DynamoDB-terraform-lock"
+            export AWS_ACCESS_KEY_ID="${{ secrets.JONGWON_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.JONGWON_SECRET_KEY }}"   
+          elif [ "${{ github.actor }}" = "zeoxixx" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.ZEOXIXX_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.ZEOXIXX_SECRET_KEY }}"
+          fi
+
+          # 테라폼 초기화
+          terraform init \
+            -backend-config="bucket=${MY_BUCKET}" \
+            -backend-config="dynamodb_table=${MY_TABLE}" \
+            -backend-config="region=ap-northeast-2"
+
+          # Terraform Apply (버튼눌렀을때만)
+          echo "수동 실행 감지: 배포(apply)를 시작합니다."
+          terraform apply --auto-approve
+       
+          # ⚡ 테라폼이 뱉어낸 최신 퍼블릭 IP를 깃허브 액션 메모리에 'APP_IP'라는 이름으로 저장합니다.
+          echo "APP_IP=$(terraform output -raw app_public_ip)" >> $GITHUB_ENV
+
+      # 앤서블 실행 직전에 가상 컴퓨터(러너)에 파일을 실시간으로 구워냄!
+      - name: Create Temporary init.sql from Secret
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/docker
+
+          cat << 'EOF' > $GITHUB_WORKSPACE/docker/init.sql
+          ${{ secrets.INIT_SQL_CONTENT }}
+          EOF
+          
+      # --------------------------------------------------
+      # 4. ansible 용 key setting (lb-key.pem)
+      # --------------------------------------------------
+      - name: setup ssh key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/lb-key.pem
+          chmod 600 ~/.ssh/lb-key.pem
+      
+      # 5. ansible playbook 실행 
+      - name: run ansible playbook
+        working-directory: ./infra/ansible # 폴더 지정
+        run: |
+          # 1. DB 서버 세팅 및 컨테이너 구동
+          ansible-playbook -i hosts deploy_db.yml --private-key=~/.ssh/lb-key.pem
+          # 2. App(FastAPI) 서버 세팅 및 컨테이너 구동
+          ansible-playbook -i hosts deploy_app.yml --private-key=~/.ssh/lb-key.pem
+
+      # ==========================================
+      # 🎯 [보안 최종단계] DAST: OWASP ZAP (동적 모의 해킹)
+      # ==========================================
+      - name: Run OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: 'http://${{ env.APP_IP }}:80'
+          fail_action: false

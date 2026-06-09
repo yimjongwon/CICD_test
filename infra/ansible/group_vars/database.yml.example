@@ -1,0 +1,11 @@
+# infra/ansible/group_vars/database.yml.example
+# ─────────────────────────────────────────────
+# 사용법: 이 파일을 database.yml 로 복사 후 실제 값 입력
+#   cd infra/ansible/group_vars
+#   cp database.yml.example database.yml
+# ※ database.yml 은 .gitignore 처리됨 (커밋 금지)
+# ─────────────────────────────────────────────
+
+# PostgreSQL 컨테이너 비밀번호 (site.yml → docker-compose 템플릿이 사용)
+# 비번 hint : 팀명1
+db_password: "CHANGE_ME"     

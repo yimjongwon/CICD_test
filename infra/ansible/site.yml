@@ -1,0 +1,71 @@
+# infra/ansible/site.yml
+- name: DB 서버 구성 (PostgreSQL + 백업 + 초기화)
+  hosts: database
+  become: true
+  vars:
+    pg_image: postgres:15
+    app_dir: /opt/lockbank
+    db_init_dir: /home/ec2-user/db_init
+    db_password: "tiger"
+    db_user: "scott"
+    db_name: "scott_db"
+    db_backup_bucket: "tfstate-bucket-24a36553" # 사용자님의 S3 버킷명 예시
+
+  tasks:
+    # ── 1. 부트스트랩 및 환경 준비 단계 ──────────────────────────────────
+    - name: DB 서버에 도커가 완벽히 설치되고 켜질 때까지 대기
+      ansible.builtin.service:
+        name: docker
+        state: started
+      register: docker_status
+      until: docker_status is success
+      retries: 10
+      delay: 5
+
+    - name: 작업 디렉토리 생성
+      ansible.builtin.file:
+        path: "{{ app_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: DB 초기화 SQL용 디렉토리 생성
+      ansible.builtin.file:
+        path: "{{ db_init_dir }}"
+        state: directory
+        owner: ec2-user
+        group: ec2-user
+        mode: "0755"
+
+    # ── 2. 소스 파일 배달 단계 ──────────────────────────────────────────
+    - name: GitHub Actions가 가공해둔 init.sql 파일을 DB 서버로 복사
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../docker/init.sql"
+        dest: "{{ db_init_dir }}/init.sql"
+        owner: ec2-user
+        group: ec2-user
+        mode: "0644"
+    
+    - name: DB 전용 docker-compose 템플릿 배치
+      ansible.builtin.template:
+        src: templates/docker-compose.db.yml.j2
+        dest: "{{ app_dir }}/docker-compose.yml"
+        mode: "0644"
+
+    # ── 3. 컨테이너 런타임 가동 단계 (컴포즈 변환) ──────────────────────────
+    - name: postgres 기동
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_dir }}"
+        state: present
+
+    # ── 4. 유지보수 및 백업 자동화 단계 ────────────────────────────────────
+    - name: aws-cli 설치 (백업용)
+      ansible.builtin.dnf:
+        name: awscli
+        state: present
+
+    - name: S3 백업 cron (instance profile라 키 불필요)
+      ansible.builtin.cron:
+        name: pg_dump_to_s3
+        minute: "0"
+        hour: "3"
+        job: "docker exec -e PGPASSWORD='{{ db_password }}' lockbank-db pg_dump -U postgres lockbank | gzip | aws s3 cp - s3://{{ db_backup_bucket }}/pg_$(date +\\%F).sql.gz"

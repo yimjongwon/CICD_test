@@ -1,0 +1,49 @@
+# version: '3.8'
+
+# networks:
+#   app-network:
+#     driver: bridge
+
+# services:
+#   # 🔵 A팀 (Blue)
+#   web-blue:
+#     image: yimjongwon/hub-app:latest # 최신 빌드된 이미지 이름 설정
+#     container_name: web-blue
+#     # 허브에 가서 최신 이미지가 있는지 확인
+#     pull_policy: always
+#     # 호스트의 8001번으로 오면 컨테이너의 8000번(FastAPI)으로 연결
+#     ports:
+#       - "8001:8000"
+#     environment:
+#       DB_URL: "postgresql://scott:tiger@{{ hostvars['db_server']['ansible_host'] }}:5432/scott_db"
+#     networks:
+#       - app-network
+#     restart: always
+
+#   # 🟢 B팀 (Green)
+#   web-green:
+#     image: yimjongwon/hub-app:latest
+#     container_name: web-green
+#     pull_policy: always
+#     # 호스트의 8002번으로 오면 컨테이너의 8000번(FastAPI)으로 연결
+#     ports:
+#       - "8002:8000"
+#     environment:
+#       DB_URL: "postgresql://scott:tiger@{{ hostvars['db_server']['ansible_host'] }}:5432/scott_db"
+#     networks:
+#       - app-network
+#     restart: always
+
+# # Nginx 
+#   my-nginx:
+#     image: nginx:latest
+#     container_name: my-nginx
+#     # 사용자는 무조건 80번(HTTP 기본 포트)으로 접속
+#     ports:
+#       - "80:80"
+#     volumes:
+#       # 수동으로 만든 default.conf를 컨테이너 내부에 읽기 전용(:ro)으로 주입
+#       - ./default.conf:/etc/nginx/conf.d/default.conf:ro
+#     networks:
+#       - app-network
+#     restart: always

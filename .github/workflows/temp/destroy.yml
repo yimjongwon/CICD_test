@@ -1,4 +1,4 @@
-# ~/project2-security/.github/workflows/destroy.yml
+# .github/workflows/destroy.yml
 
 
 name: "Terraform Destroy"
@@ -26,50 +26,26 @@ jobs:
             MY_TABLE=""
             export AWS_ACCESS_KEY_ID="${{ secrets.JUNHAN_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.JUNHAN_SECRET_KEY }}"
-            export TF_VAR_admin_ingress_cidr="${{ secrets.JUNHAN_IP }}"
-            export TF_VAR_tailnet_name="${{ secrets.JUNHAN_TAILNET }}"
-            export TF_VAR_tailscale_api_key="${{ secrets.JUNHAN_TS_API_KEY }}"
-            export TF_VAR_cloudflare_api_token="${{ secrets.JUNHAN_CF_TOKEN }}"
-          
           elif [ "${{ github.actor }}" = "KTCLIF" ]; then
             MY_BUCKET=""
             MY_TABLE=""
             export AWS_ACCESS_KEY_ID="${{ secrets.KTCLIF_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.KTCLIF_SECRET_KEY }}"
-            export TF_VAR_admin_ingress_cidr="${{ secrets.KTCLIF_IP }}"
-            export TF_VAR_tailnet_name="${{ secrets.KTCLIF_TAILNET }}"
-            export TF_VAR_tailscale_api_key="${{ secrets.KTCLIF_TS_API_KEY }}"
-            export TF_VAR_cloudflare_api_token="${{ secrets.KTCLIF_CF_TOKEN }}"
-          
           elif [ "${{ github.actor }}" = "tkddn3901" ]; then
             MY_BUCKET=""
             MY_TABLE=""
             export AWS_ACCESS_KEY_ID="${{ secrets.SANGWOO_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.SANGWOO_SECRET_KEY }}"
-            export TF_VAR_admin_ingress_cidr="${{ secrets.SANGWOO_IP }}"
-            export TF_VAR_tailnet_name="${{ secrets.SANGWOO_TAILNET }}"
-            export TF_VAR_tailscale_api_key="${{ secrets.SANGWOO_TS_API_KEY }}"
-            export TF_VAR_cloudflare_api_token="${{ secrets.SANGWOO_CF_TOKEN }}"
-          
           elif [ "${{ github.actor }}" = "yimjongwon" ]; then
-            MY_BUCKET="tfstate-bucket-348876a9"
+            MY_BUCKET="tfstate-bucket-24a36553"
             MY_TABLE="DynamoDB-terraform-lock"
             export AWS_ACCESS_KEY_ID="${{ secrets.JONGWON_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.JONGWON_SECRET_KEY }}"   
-            export TF_VAR_admin_ingress_cidr="${{ secrets.JONGWON_IP }}"
-            export TF_VAR_tailnet_name="${{ secrets.JONGWON_TAILNET }}"
-            export TF_VAR_tailscale_api_key="${{ secrets.JONGWON_TS_API_KEY }}"
-            export TF_VAR_cloudflare_api_token="${{ secrets.JONGWON_CF_TOKEN }}"
-          
           elif [ "${{ github.actor }}" = "zeoxixx" ]; then
             MY_BUCKET=""
             MY_TABLE=""
             export AWS_ACCESS_KEY_ID="${{ secrets.ZEOXIXX_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.ZEOXIXX_SECRET_KEY }}"
-            export TF_VAR_admin_ingress_cidr="${{ secrets.ZEOXIXX_IP }}"
-            export TF_VAR_tailnet_name="${{ secrets.ZEOXIXX_TAILNET }}"
-            export TF_VAR_tailscale_api_key="${{ secrets.ZEOXIXX_TS_API_KEY }}"
-            export TF_VAR_cloudflare_api_token="${{ secrets.ZEOXIXX_CF_TOKEN }}"
           fi
 
           # hcl 파일에서 주입
