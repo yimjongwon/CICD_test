@@ -8,6 +8,16 @@ ARG GITHUB_ACTOR="unknown"
 LABEL description="FastAPI 가동용 앱 인프라 테스트 이미지"
 LABEL author="${GITHUB_ACTOR}"
 
+# ── 🎯 [여기 추가] OS 자체의 OpenSSL 취약점 강제 패치 ──
+# 베이스 이미지의 OS(데비안) 패키지 저장소를 업데이트하고, 문제가 된 3개 라이브러리를 최신 버전으로 올립니다.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libssl3t64 \
+    openssl \
+    openssl-provider-legacy && \
+    rm -rf /var/lib/apt/lists/*
+# ──────────────────────────────────────────────────
+
 # 2. 작업 디렉토리 설정
 WORKDIR /app
 # 3. 종속성 파일 먼저 복사 
