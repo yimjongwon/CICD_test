@@ -52,10 +52,20 @@ provider "aws" {
   }
 }
 
-# Cloudflare provider — dns_provider = "cloudflare" 일 때만 사용
-# 토큰은 코드에 두지 말고 환경변수 TF_VAR_cloudflare_api_token 로 주입
+# route53/none 사용자용 cloudflare 더미 토큰.
+locals {
+  # Terraform은 미사용 provider도 configure하므로 형식(40자)·존재 검증 통과가 필요.
+  # cloudflare 리소스는 count=0(dns_provider≠cloudflare)이라 더미로 실제 API 호출 없음.
+  # range(40)으로 길이를 코드가 보장 → 0 개수 오타 위험 제거.
+  cloudflare_dummy_token = join("", [for _ in range(40) : "0"])
+  # (다른 간단 버전 코드) 
+  # cloudflare_dummy_token = format("%040d", 0)   # 0을 40자리 zero-pad = "0"×40
+}
+
+# Cloudflare provider — dns_provider="cloudflare" 일 때만 실제 사용
+# 토큰은 코드/tfvars 금지, 환경변수 TF_VAR_cloudflare_api_token 로 주입
 provider "cloudflare" {
-  api_token = var.cloudflare_api_token
+  api_token = var.cloudflare_api_token != "" ? var.cloudflare_api_token : local.cloudflare_dummy_token
 }
 
 # Tailscale provider — 키 생성·기기 승인용 (api_key 는 환경변수 권장)
