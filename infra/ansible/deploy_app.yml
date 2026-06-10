@@ -1,41 +1,41 @@
-# 파일 위치: ./infra/ansible/deploy_app.yml
-- name: Deploy FastAPI Web App via Docker Compose
-  hosts: app_servers
-  become: true # sudo 권한으로 실행
-  tasks:
-    # 1. 서버 내부에 프로젝트 폴더 생성
-    - name: Create app directory on EC2
-      ansible.builtin.file:
-        path: /home/ec2-user/project2-security/docker
-        state: directory
-        owner: ec2-user
-        group: ec2-user
+# # 파일 위치: ./infra/ansible/deploy_app.yml
+# - name: Deploy FastAPI Web App via Docker Compose
+#   hosts: app_servers
+#   become: true # sudo 권한으로 실행
+#   tasks:
+#     # 1. 서버 내부에 프로젝트 폴더 생성
+#     - name: Create app directory on EC2
+#       ansible.builtin.file:
+#         path: /home/ec2-user/project2-security/docker
+#         state: directory
+#         owner: ec2-user
+#         group: ec2-user
 
-    # 2. 도커 컴포즈 파일 배달
-    - name: Copy docker-compose.yml to App Server
-      ansible.builtin.template:
-        src: ../../docker/docker-compose.yaml
-        dest: /home/ec2-user/project2-security/docker/docker-compose.yml
-        owner: ec2-user
-        group: ec2-user
-        mode: '0644'
+#     # 2. 도커 컴포즈 파일 배달
+#     - name: Copy docker-compose.yml to App Server
+#       ansible.builtin.template:
+#         src: ../../docker/docker-compose.yaml
+#         dest: /home/ec2-user/project2-security/docker/docker-compose.yml
+#         owner: ec2-user
+#         group: ec2-user
+#         mode: '0644'
     
-    #  3. Nginx 설정 파일 배달
-    - name: Copy default.conf to App Server
-      ansible.builtin.template:
-        src: ../../docker/default.conf  # 내 로컬(컴퓨터)에 새로 만들어둘 파일
-        dest: /home/ec2-user/project2-security/docker/default.conf
-        owner: ec2-user
-        group: ec2-user
-        mode: '0644'
+#     #  3. Nginx 설정 파일 배달
+#     - name: Copy default.conf to App Server
+#       ansible.builtin.template:
+#         src: ../../docker/default.conf  # 내 로컬(컴퓨터)에 새로 만들어둘 파일
+#         dest: /home/ec2-user/project2-security/docker/default.conf
+#         owner: ec2-user
+#         group: ec2-user
+#         mode: '0644'
 
-    # 4. Ansible이 원격 서버에서 실행 버튼을 누릅니다.
-    - name: Run Docker Compose Up
-      ansible.builtin.shell: |
-        cd /home/ec2-user/project2-security/docker
-        docker compose up -d --build
-      args:
-        executable: /bin/bash 
+#     # 4. Ansible이 원격 서버에서 실행 버튼을 누릅니다.
+#     - name: Run Docker Compose Up
+#       ansible.builtin.shell: |
+#         cd /home/ec2-user/project2-security/docker
+#         docker compose up -d --build
+#       args:
+#         executable: /bin/bash 
 
 
       

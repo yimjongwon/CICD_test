@@ -134,16 +134,16 @@ variable "route53_zone_name" {
 
 # cloudflare 전용 — Zone ID + API 토큰 (토큰은 환경변수 권장)
 variable "cloudflare_zone_id" {
-  description = "dns_provider=cloudflare 일 때 Cloudflare Zone ID"
   type        = string
   default     = ""
+  description = "dns_provider=cloudflare 일 때 Cloudflare Zone ID"
 }
 
 variable "cloudflare_api_token" {
-  description = "Cloudflare API 토큰. 코드/tfvars 금지, 환경변수 TF_VAR_cloudflare_api_token 로 주입"
   type        = string
   default     = ""
   sensitive   = true
+  description = "Cloudflare API 토큰. 코드/tfvars 금지, 환경변수 TF_VAR_cloudflare_api_token 로 주입"
 }
 
 variable "tailnet_name" {
@@ -162,7 +162,6 @@ variable "admin_ingress_cidr" {
   type        = string
   # default 제거 → 미입력 시 에러로 강제 (0.0.0.0/0 사고 방지)
 }
-
 
 variable "app_image" {
   type    = string
