@@ -110,6 +110,9 @@ jobs:
           echo "수동 배포(apply)를 시작합니다."
           terraform apply --auto-approve
 
+          echo "새로 생성된 앱 서버 인스턴스가 도커 이미지를 다운받고 앱을 가동할 때까지 45초간 대기합니다..."
+          sleep 45
+
           # [핵심 변환 로직] 도메인이 정상 출력되었는지 판단 후 OWASP ZAP용 타겟 URL 생성
           SVC_DOMAIN=$(terraform output -raw service_domain)
           

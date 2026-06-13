@@ -228,14 +228,6 @@ resource "aws_autoscaling_group" "blue" {
     version = "$Latest"
   }
 
-  instance_refresh {
-    strategy = "Rolling"
-    preferences {
-      min_healthy_percentage = 50 # 배포 중에도 최소 절반의 서버는 정상 작동 유지
-    }
-    triggers = ["tag"]
-  }
-
   tag {
     key                 = "Color"
     value               = "blue"
@@ -258,14 +250,6 @@ resource "aws_autoscaling_group" "green" {
   launch_template {
     id      = aws_launch_template.app.id
     version = "$Latest"
-  }
-
-  instance_refresh {
-    strategy = "Rolling"
-    preferences {
-      min_healthy_percentage = 50 # 배포 중에도 최소 절반의 서버는 정상 작동 유지
-    }
-    triggers = ["tag"]
   }
 
   tag {
