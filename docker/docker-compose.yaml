@@ -3,7 +3,7 @@ version: '3.8'
 services:
   hub-app: # service 의 이름은 마음대로 지을 수 있다.
     image: yimjongwon/lock-app:latest # 빌드된 이미지 이름 설정
-    container_name: lock-app
+    container_name: lockbank-app
     pull_policy: always
     ports:
       - "8080:8080"

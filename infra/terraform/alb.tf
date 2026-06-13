@@ -21,7 +21,7 @@ resource "aws_lb" "web_alb" {
 # ※ 인스턴스 장애 대체·스케일아웃은 ASG 담당 (blue/green과 별개)
 resource "aws_lb_target_group" "blue" { # green도 동일 설정
   name     = "${var.project}-tg-blue"
-  port     = 80
+  port     = 8080
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
 
@@ -45,7 +45,7 @@ resource "aws_lb_target_group" "blue" { # green도 동일 설정
 
 resource "aws_lb_target_group" "green" {
   name     = "${var.project}-tg-green"
-  port     = 80
+  port     = 8080
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
 
