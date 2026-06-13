@@ -36,8 +36,8 @@ COMMENT ON COLUMN transactions.title IS '내역 표기명 (예: "Netflix", "Coff
 COMMENT ON COLUMN transactions.amount IS '거래 금액 (출금은 마이너스, 입금은 플러스)';
 COMMENT ON COLUMN transactions.created_at IS '이체 및 거래 시간';
 
--- 최초 가동 및 테스트를 위한 기본 관리자 데이터 샘플 삽입
--- 💡 각 유저의 실제 로그인 비밀번호는 [ lb-user ] 입니다.
+-- users 샘플 데이터 데이터 샘플 삽입
+-- 💡 각 유저의 로그인 비밀번호는 [ lb-user ] 입니다.
 INSERT INTO users (username, password, account_number, balance)
 VALUES 
 -- 💰 모든 유저의 계좌 잔액은 1,000,000원(백만 원)으로 통일
@@ -59,8 +59,8 @@ ON CONFLICT (username) DO NOTHING;
 
 -- transactions 샘플 데이터 5개 삽입 (외래키 id 자동 조회를 위해 서브쿼리 사용)
 INSERT INTO transactions (user_id, target_account, title, amount) VALUES
-((SELECT id FROM users WHERE username='user1'), '1002-002', '송금', 10000),
-((SELECT id FROM users WHERE username='user2'), '1002-003', '용돈', 50000),
-((SELECT id FROM users WHERE username='user3'), '1002-004', '식비 정산', 15000),
-((SELECT id FROM users WHERE username='user4'), '1002-005', '중고 물품 거래', 200000),
-((SELECT id FROM users WHERE username='user5'), '1002-001', '커피 기프티콘', 5000);
+((SELECT id FROM users WHERE username='junhan'), '1002-002', '송금', 10000),
+((SELECT id FROM users WHERE username='jongwon'), '1002-003', '용돈', 50000),
+((SELECT id FROM users WHERE username='sangwoo'), '1002-004', '식비 정산', 15000),
+((SELECT id FROM users WHERE username='jiyoon'), '1002-005', '중고 물품 거래', 200000),
+((SELECT id FROM users WHERE username='jungeun'), '1002-001', '커피 기프티콘', 5000);
