@@ -26,7 +26,7 @@ jobs:
         run: |
           export TF_VAR_route53_zone_name=""
           export TF_VAR_db_password="${{ secrets.DB_PASSWORD }}"
-
+          
           # 푸시한 사람(github.actor)에 따라 버킷명과 테이블명, , AWS 키 설정
           if [ "${{ github.actor }}" = "ShinJunhan" ]; then
             MY_BUCKET=""
@@ -38,6 +38,7 @@ jobs:
             export TF_VAR_tailscale_api_key="${{ secrets.JUNHAN_TS_API_KEY }}"
             export TF_VAR_cloudflare_api_token="${{ secrets.JUNHAN_CF_TOKEN }}"
             export TF_VAR_domain_name="${{ secrets.JUNHAN_DOMAIN }}"
+            export TF_VAR_db_host_replica="${{ secrets.JUNHAN_REPLICA_IP }}"
 
           elif [ "${{ github.actor }}" = "KTCLIF" ]; then
             MY_BUCKET=""
@@ -49,6 +50,7 @@ jobs:
             export TF_VAR_tailscale_api_key="${{ secrets.KTCLIF_TS_API_KEY }}"
             export TF_VAR_cloudflare_api_token="${{ secrets.KTCLIF_CF_TOKEN }}"
             export TF_VAR_domain_name="${{ secrets.KTCLIF_DOMAIN }}"
+            export TF_VAR_db_host_replica="${{ secrets.KTCLIF_REPLICA_IP }}"
 
           elif [ "${{ github.actor }}" = "tkddn3901" ]; then
             MY_BUCKET=""
@@ -60,6 +62,7 @@ jobs:
             export TF_VAR_tailscale_api_key="${{ secrets.SANGWOO_TS_API_KEY }}"
             export TF_VAR_cloudflare_api_token="${{ secrets.SANGWOO_CF_TOKEN }}"
             export TF_VAR_domain_name="${{ secrets.SANGWOO_DOMAIN }}"
+            export TF_VAR_db_host_replica="${{ secrets.SANGWOO_REPLICA_IP }}"
 
           elif [ "${{ github.actor }}" = "yimjongwon" ]; then
             MY_BUCKET="tfstate-bucket-348876a9"
@@ -72,6 +75,7 @@ jobs:
             export TF_VAR_cloudflare_api_token="${{ secrets.JONGWON_CF_TOKEN }}"
             export TF_VAR_domain_name="${{ secrets.JONGWON_DOMAIN }}"
             export TF_VAR_route53_zone_name="${{ secrets.JONGWON_DOMAIN }}"
+            export TF_VAR_db_host_replica="${{ secrets.JONGWON_REPLICA_IP }}"
 
           elif [ "${{ github.actor }}" = "zeoxixx" ]; then
             MY_BUCKET=""
@@ -83,6 +87,7 @@ jobs:
             export TF_VAR_tailscale_api_key="${{ secrets.ZEOXIXX_TS_API_KEY }}"
             export TF_VAR_cloudflare_api_token="${{ secrets.ZEOXIXX_CF_TOKEN }}"
             export TF_VAR_domain_name="${{ secrets.ZEOXIXX_DOMAIN }}"
+            export TF_VAR_db_host_replica="${{ secrets.ZEOXIXX_REPLICA_IP }}"
           fi
 
           # 최신 빌드된 이미지를 반영하도록 테라폼 변수 주입 지정
