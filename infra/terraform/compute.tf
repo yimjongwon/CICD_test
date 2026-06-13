@@ -181,12 +181,12 @@ resource "aws_launch_template" "app" {
     dnf install -y docker && systemctl enable --now docker
 
     # 3) Nginx와 app이 서로 통신할 가상 브리지 네트워크 구축
-    docker network create lockbank-net || true
+    # docker network create lockbank-net || true
 
     # 4) [App 컨테이너 가동] 이름을 lockbank-app으로 단일화하고 가상망 탑승 및 DB 환경변수 주입
     docker pull ${var.app_image} || true
     docker run -d --restart=always \
-      --net lockbank-net \
+      # --net lockbank-net \
       --name lockbank-app \
       -p 8080:8080 \
       -e DB_HOST_MAIN="${aws_instance.db.private_ip}" \
