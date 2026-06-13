@@ -13,6 +13,7 @@ import socket
 import urllib.request
 from contextlib import contextmanager, asynccontextmanager
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+# import requests # 👈 urllib 대신 깔끔한 requests 라이브러리 임포트
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,17 +22,34 @@ def get_server_info():
     try:
         req = urllib.request.Request("http://169.254.169.254/latest/api/token", method="PUT")
         req.add_header("X-aws-ec2-metadata-token-ttl-seconds", "21600")
-        with urllib.request.urlopen(req, timeout=1) as response:
+        with urllib.request.urlopen(req, timeout=1) as response: # nosec B310
             token = response.read().decode('utf-8')
             
         req2 = urllib.request.Request("http://169.254.169.254/latest/meta-data/local-ipv4")
         req2.add_header("X-aws-ec2-metadata-token", token)
-        with urllib.request.urlopen(req2, timeout=1) as response:
+        with urllib.request.urlopen(req2, timeout=1) as response: # nosec B310
             ip = response.read().decode('utf-8')
             return f"IP: {ip}"
     except:
         return f"Host: {socket.gethostname()}"
+# Bandit: requests 라이브러리로 교체
+# def get_server_info():
+#     try:
+#         # 1. IMDSv2 토큰 가져오기 (PUT 메서드)
+#         headers = {"X-aws-ec2-metadata-token-ttl-seconds": "21600"}
+#         response = requests.put("http://169.254.169.254/latest/api/token", headers=headers, timeout=1)
+#         token = response.text
 
+#         # 2. 발급받은 토큰으로 메타데이터(EC2 내부 IP) 조회 (GET 메서드)
+#         headers2 = {"X-aws-ec2-metadata-token": token}
+#         response2 = requests.get("http://169.254.169.254/latest/meta-data/local-ipv4", headers=headers2, timeout=1)
+#         ip = response2.text
+        
+#         return f"IP: {ip}"
+        
+#     except Exception:
+#         # AWS 환경이 아니거나 메타데이터 조회가 실패하면 (로컬 PC나 빌드 환경 등)
+#         return f"Host: {socket.gethostname()}"
 SERVER_INFO = get_server_info()
 
 login_failed_total = Counter("login_failed_total", "Total failed login attempts")

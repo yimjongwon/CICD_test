@@ -92,8 +92,6 @@ jobs:
             export TF_VAR_domain_name="${{ secrets.ZEOXIXX_DOMAIN }}"
           fi
 
-          export TF_VAR_app_image="${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest"
-
           # 테라폼 초기화 및 플랜 
           terraform init \
             -backend-config="bucket=${MY_BUCKET}" \
