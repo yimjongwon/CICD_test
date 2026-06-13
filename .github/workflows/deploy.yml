@@ -25,6 +25,7 @@ jobs:
         working-directory: ./infra/terraform # 폴더 지정
         run: |
           export TF_VAR_route53_zone_name=""
+          export TF_VAR_db_password="${{ secrets.DB_PASSWORD }}"
           
           # 푸시한 사람(github.actor)에 따라 버킷명과 테이블명, , AWS 키 설정
           if [ "${{ github.actor }}" = "ShinJunhan" ]; then
