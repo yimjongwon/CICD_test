@@ -128,19 +128,19 @@ jobs:
           ${{ secrets.INIT_SQL_CONTENT }}
           EOF
           
-      # 실행한 사람(github.actor)에 따라 테일스케일 키 동적 주입
+      # 실행한 사람(github.actor)에 따라 테일스케일 Auth Key 동적 주입
       - name: Connect to Tailscale Network
         run: |
           if [ "${{ github.actor }}" = "ShinJunhan" ]; then
-            echo "TS_KEY=${{ secrets.JUNHAN_TS_API_KEY }}" >> $GITHUB_ENV
+            echo "TS_KEY=${{ secrets.JUNHAN_TS_AUTH_KEY }}" >> $GITHUB_ENV
           elif [ "${{ github.actor }}" = "KTCLIF" ]; then
-            echo "TS_KEY=${{ secrets.KTCLIF_TS_API_KEY }}" >> $GITHUB_ENV
+            echo "TS_KEY=${{ secrets.KTCLIF_TS_AUTH_KEY }}" >> $GITHUB_ENV
           elif [ "${{ github.actor }}" = "tkddn3901" ]; then
-            echo "TS_KEY=${{ secrets.SANGWOO_TS_API_KEY }}" >> $GITHUB_ENV
+            echo "TS_KEY=${{ secrets.SANGWOO_TS_AUTH_KEY }}" >> $GITHUB_ENV
           elif [ "${{ github.actor }}" = "yimjongwon" ]; then
-            echo "TS_KEY=${{ secrets.JONGWON_TS_API_KEY }}" >> $GITHUB_ENV
+            echo "TS_KEY=${{ secrets.JONGWON_TS_AUTH_KEY }}" >> $GITHUB_ENV
           elif [ "${{ github.actor }}" = "zeoxixx" ]; then
-            echo "TS_KEY=${{ secrets.ZEOXIXX_TS_API_KEY }}" >> $GITHUB_ENV
+            echo "TS_KEY=${{ secrets.ZEOXIXX_TS_AUTH_KEY }}" >> $GITHUB_ENV
           fi
 
       # 위에서 세팅된 환경변수(TS_KEY)를 받아와서 실제로 Tailscale에 로그인합니다.
