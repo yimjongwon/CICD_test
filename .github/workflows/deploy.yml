@@ -1,13 +1,10 @@
-# cicd_test/.github/workflows/deploy.yml
-
-
 name: "Terraform Apply(수동)"
 on:
   workflow_dispatch: # 수동 실행 버튼
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       issues: write
@@ -20,176 +17,117 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
      
-      # 3. terraform Init & Apply
+      # 3. 개발자별 변수 정렬 및 테라폼 실행
       - name: Terraform Init and Apply
-        working-directory: ./infra/terraform # 폴더 지정
+        working-directory: ./infra/terraform
+        # 🚀 [핵심 개선] 실행하는 사람(github.actor)에 맞는 Secrets 환경변수를 안전하게 주입
+        env:
+          AWS_ACCESS_KEY_ID: >-
+            ${{ github.actor == 'ShinJunhan' && secrets.JUNHAN_ACCESS_KEY ||
+                github.actor == 'KTCLIF'    && secrets.KTCLIF_ACCESS_KEY ||
+                github.actor == 'tkddn3901'  && secrets.SANGWOO_ACCESS_KEY ||
+                github.actor == 'yimjongwon' && secrets.JONGWON_ACCESS_KEY ||
+                github.actor == 'zeoxixx'    && secrets.ZEOXIXX_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: >-
+            ${{ github.actor == 'ShinJunhan' && secrets.JUNHAN_SECRET_KEY ||
+                github.actor == 'KTCLIF'    && secrets.KTCLIF_SECRET_KEY ||
+                github.actor == 'tkddn3901'  && secrets.SANGWOO_SECRET_KEY ||
+                github.actor == 'yimjongwon' && secrets.JONGWON_SECRET_KEY ||
+                github.actor == 'zeoxixx'    && secrets.ZEOXIXX_SECRET_KEY }}
+          TF_VAR_admin_ingress_cidr: >-
+            ${{ github.actor == 'ShinJunhan' && secrets.JUNHAN_IP ||
+                github.actor == 'KTCLIF'    && secrets.KTCLIF_IP ||
+                github.actor == 'tkddn3901'  && secrets.SANGWOO_IP ||
+                github.actor == 'yimjongwon' && secrets.JONGWON_IP ||
+                github.actor == 'zeoxixx'    && secrets.ZEOXIXX_IP }}
+          TF_VAR_tailnet_name: >-
+            ${{ github.actor == 'ShinJunhan' && secrets.JUNHAN_TAILNET ||
+                github.actor == 'KTCLIF'    && secrets.KTCLIF_TAILNET ||
+                github.actor == 'tkddn3901'  && secrets.SANGWOO_TAILNET ||
+                github.actor == 'yimjongwon' && secrets.JONGWON_TAILNET ||
+                github.actor == 'zeoxixx'    && secrets.ZEOXIXX_TAILNET }}
+          TF_VAR_tailscale_api_key: >-
+            ${{ github.actor == 'ShinJunhan' && secrets.JUNHAN_TS_API_KEY ||
+                github.actor == 'KTCLIF'    && secrets.KTCLIF_TS_API_KEY ||
+                github.actor == 'tkddn3901'  && secrets.SANGWOO_TS_API_KEY ||
+                github.actor == 'yimjongwon' && secrets.JONGWON_TS_API_KEY ||
+                github.actor == 'zeoxixx'    && secrets.ZEOXIXX_TS_API_KEY }}
+          TF_VAR_cloudflare_api_token: >-
+            ${{ github.actor == 'ShinJunhan' && secrets.JUNHAN_CF_TOKEN ||
+                github.actor == 'KTCLIF'    && secrets.KTCLIF_CF_TOKEN ||
+                github.actor == 'tkddn3901'  && secrets.SANGWOO_CF_TOKEN ||
+                github.actor == 'yimjongwon' && secrets.JONGWON_CF_TOKEN ||
+                github.actor == 'zeoxixx'    && secrets.ZEOXIXX_CF_TOKEN }}
+          TF_VAR_domain_name: >-
+            ${{ github.actor == 'ShinJunhan' && secrets.JUNHAN_DOMAIN ||
+                github.actor == 'KTCLIF'    && secrets.KTCLIF_DOMAIN ||
+                github.actor == 'tkddn3901'  && secrets.SANGWOO_DOMAIN ||
+                github.actor == 'yimjongwon' && secrets.JONGWON_DOMAIN ||
+                github.actor == 'zeoxixx'    && secrets.ZEOXIXX_DOMAIN }}
+          TF_VAR_route53_zone_name: >-
+            ${{ github.actor == 'yimjongwon' && secrets.JONGWON_DOMAIN || '' }}
+          TF_VAR_db_host_replica: >-
+            ${{ github.actor == 'ShinJunhan' && secrets.JUNHAN_REPLICA_IP ||
+                github.actor == 'KTCLIF'    && secrets.KTCLIF_REPLICA_IP ||
+                github.actor == 'tkddn3901'  && secrets.SANGWOO_REPLICA_IP ||
+                github.actor == 'yimjongwon' && secrets.JONGWON_REPLICA_IP ||
+                github.actor == 'zeoxixx'    && secrets.ZEOXIXX_REPLICA_IP }}
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+          TF_VAR_app_image: ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest
         run: |
-          export TF_VAR_route53_zone_name=""
-          export TF_VAR_db_password="${{ secrets.DB_PASSWORD }}"
-          
-          # 푸시한 사람(github.actor)에 따라 버킷명과 테이블명, , AWS 키 설정
+          # 1) 백엔드용 동적 S3 버킷/테이블 매핑 규칙 설정
           if [ "${{ github.actor }}" = "ShinJunhan" ]; then
             MY_BUCKET=""
             MY_TABLE=""
-            export AWS_ACCESS_KEY_ID="${{ secrets.JUNHAN_ACCESS_KEY }}"
-            export AWS_SECRET_ACCESS_KEY="${{ secrets.JUNHAN_SECRET_KEY }}"
-            export TF_VAR_admin_ingress_cidr="${{ secrets.JUNHAN_IP }}"
-            export TF_VAR_tailnet_name="${{ secrets.JUNHAN_TAILNET }}"
-            export TF_VAR_tailscale_api_key="${{ secrets.JUNHAN_TS_API_KEY }}"
-            export TF_VAR_cloudflare_api_token="${{ secrets.JUNHAN_CF_TOKEN }}"
-            export TF_VAR_domain_name="${{ secrets.JUNHAN_DOMAIN }}"
-            export TF_VAR_db_host_replica="${{ secrets.JUNHAN_REPLICA_IP }}"
-
           elif [ "${{ github.actor }}" = "KTCLIF" ]; then
             MY_BUCKET=""
             MY_TABLE=""
-            export AWS_ACCESS_KEY_ID="${{ secrets.KTCLIF_ACCESS_KEY }}"
-            export AWS_SECRET_ACCESS_KEY="${{ secrets.KTCLIF_SECRET_KEY }}"
-            export TF_VAR_admin_ingress_cidr="${{ secrets.KTCLIF_IP }}"
-            export TF_VAR_tailnet_name="${{ secrets.KTCLIF_TAILNET }}"
-            export TF_VAR_tailscale_api_key="${{ secrets.KTCLIF_TS_API_KEY }}"
-            export TF_VAR_cloudflare_api_token="${{ secrets.KTCLIF_CF_TOKEN }}"
-            export TF_VAR_domain_name="${{ secrets.KTCLIF_DOMAIN }}"
-            export TF_VAR_db_host_replica="${{ secrets.KTCLIF_REPLICA_IP }}"
-
           elif [ "${{ github.actor }}" = "tkddn3901" ]; then
             MY_BUCKET=""
             MY_TABLE=""
-            export AWS_ACCESS_KEY_ID="${{ secrets.SANGWOO_ACCESS_KEY }}"
-            export AWS_SECRET_ACCESS_KEY="${{ secrets.SANGWOO_SECRET_KEY }}"
-            export TF_VAR_admin_ingress_cidr="${{ secrets.SANGWOO_IP }}"
-            export TF_VAR_tailnet_name="${{ secrets.SANGWOO_TAILNET }}"
-            export TF_VAR_tailscale_api_key="${{ secrets.SANGWOO_TS_API_KEY }}"
-            export TF_VAR_cloudflare_api_token="${{ secrets.SANGWOO_CF_TOKEN }}"
-            export TF_VAR_domain_name="${{ secrets.SANGWOO_DOMAIN }}"
-            export TF_VAR_db_host_replica="${{ secrets.SANGWOO_REPLICA_IP }}"
-
           elif [ "${{ github.actor }}" = "yimjongwon" ]; then
             MY_BUCKET="tfstate-bucket-348876a9"
             MY_TABLE="DynamoDB-terraform-lock"
-            export AWS_ACCESS_KEY_ID="${{ secrets.JONGWON_ACCESS_KEY }}"
-            export AWS_SECRET_ACCESS_KEY="${{ secrets.JONGWON_SECRET_KEY }}"   
-            export TF_VAR_admin_ingress_cidr="${{ secrets.JONGWON_IP }}"
-            export TF_VAR_tailnet_name="${{ secrets.JONGWON_TAILNET }}"
-            export TF_VAR_tailscale_api_key="${{ secrets.JONGWON_TS_API_KEY }}"
-            export TF_VAR_cloudflare_api_token="${{ secrets.JONGWON_CF_TOKEN }}"
-            export TF_VAR_domain_name="${{ secrets.JONGWON_DOMAIN }}"
-            export TF_VAR_route53_zone_name="${{ secrets.JONGWON_DOMAIN }}"
-            export TF_VAR_db_host_replica="${{ secrets.JONGWON_REPLICA_IP }}"
-
           elif [ "${{ github.actor }}" = "zeoxixx" ]; then
             MY_BUCKET=""
             MY_TABLE=""
-            export AWS_ACCESS_KEY_ID="${{ secrets.ZEOXIXX_ACCESS_KEY }}"
-            export AWS_SECRET_ACCESS_KEY="${{ secrets.ZEOXIXX_SECRET_KEY }}"
-            export TF_VAR_admin_ingress_cidr="${{ secrets.ZEOXIXX_IP }}"
-            export TF_VAR_tailnet_name="${{ secrets.ZEOXIXX_TAILNET }}"
-            export TF_VAR_tailscale_api_key="${{ secrets.ZEOXIXX_TS_API_KEY }}"
-            export TF_VAR_cloudflare_api_token="${{ secrets.ZEOXIXX_CF_TOKEN }}"
-            export TF_VAR_domain_name="${{ secrets.ZEOXIXX_DOMAIN }}"
-            export TF_VAR_db_host_replica="${{ secrets.ZEOXIXX_REPLICA_IP }}"
           fi
 
-          # 최신 빌드된 이미지를 반영하도록 테라폼 변수 주입 지정
-          # 만약 특정 버전 태그를 고정하고 싶다면 github.run_number
-          export TF_VAR_app_image="${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest"
-
-          # 🚀 [안전장치] S3 백엔드 설정이 비어있는 팀원이 실행했을 때 예외 처리
+          # 안전장치 예외 처리
           if [ -z "${MY_BUCKET}" ]; then
-            echo "❌ 해당 개발자(${{ github.actor }})의 S3 Backend 설정이 없어 배포를 중단합니다. 로컬 백엔드를 쓰거나 설정을 채워주세요."
+            echo "❌ 해당 개발자(${{ github.actor }})의 S3 Backend 설정이 없어 배포를 중단합니다."
             exit 1
           fi
 
-          # 테라폼 초기화
+          # 2) 테라폼 초기화 및 배포 진행
           terraform init \
             -backend-config="bucket=${MY_BUCKET}" \
             -backend-config="dynamodb_table=${MY_TABLE}" \
             -backend-config="region=ap-northeast-2"
 
-          # 인프라 배포 및 Blue/Green ASG 가동
-          echo "수동 배포(apply)를 시작합니다."
+          echo "인프라 무중단 배포(apply)를 시작합니다."
           terraform apply --auto-approve
 
-          echo "새로 생성된 앱 서버 인스턴스가 도커 이미지를 다운받고 앱을 가동할 때까지 45초간 대기합니다..."
+          # 3) 인프라 부팅 완료 및 안정화를 위한 버퍼 타임 설정
+          echo "앱 서버가 도커 엔진을 구동하고 앱을 가동할 때까지 45초간 대기합니다..."
           sleep 45
 
-          # [핵심 변환 로직] 도메인이 정상 출력되었는지 판단 후 OWASP ZAP용 타겟 URL 생성
+          # 4) 타겟 URL 생성 규칙 적용
           SVC_DOMAIN=$(terraform output -raw service_domain)
-          
           if [ "$SVC_DOMAIN" = "N/A (HTTP only)" ] || [ -z "$SVC_DOMAIN" ]; then
-            # HTTPS 도메인이 설정되지 않았다면 ALB의 순수 DNS 주소(HTTP)를 타겟으로 삼음
             ALB_DNS=$(terraform output -raw alb_dns_name)
             echo "APP_URL=http://${ALB_DNS}" >> $GITHUB_ENV
           else
-            # 도메인이 정상 작동 중이라면 해당 도메인 주소(HTTPS)를 타겟으로 삼음
             echo "APP_URL=https://${SVC_DOMAIN}" >> $GITHUB_ENV
           fi
 
-          # 제대로 담겼는지 깃허브 액션 콘솔에서 확인하기 위한 한 줄
-          echo "🎯 타겟 APP_URL이 설정되었습니다: ${{ env.APP_URL }}"
+          echo "🎯 최종 연동 APP_URL 설정 완료: ${{ env.APP_URL }}"
 
-      # init.sql파일 가공 작업
-      # - name: Create Temporary init.sql from Secret
-      #   run: |
-      #     #  $GITHUB_WORKSPACE: 프로젝트 최상위 루트 절대 경로
-      #     mkdir -p $GITHUB_WORKSPACE/infra/ansible
-      #     cat << 'EOF' > $GITHUB_WORKSPACE/infra/ansible/init.sql
-      #     ${{ secrets.INIT_SQL_CONTENT }}
-      #     EOF
-          
-      # 실행한 사람(github.actor)에 따라 테일스케일 Auth Key 동적 주입
-      # - name: Connect to Tailscale Network
-      #   run: |
-      #     if [ "${{ github.actor }}" = "ShinJunhan" ]; then
-      #       echo "TS_KEY=${{ secrets.JUNHAN_TS_AUTH_KEY }}" >> $GITHUB_ENV
-      #     elif [ "${{ github.actor }}" = "KTCLIF" ]; then
-      #       echo "TS_KEY=${{ secrets.KTCLIF_TS_AUTH_KEY }}" >> $GITHUB_ENV
-      #     elif [ "${{ github.actor }}" = "tkddn3901" ]; then
-      #       echo "TS_KEY=${{ secrets.SANGWOO_TS_AUTH_KEY }}" >> $GITHUB_ENV
-      #     elif [ "${{ github.actor }}" = "yimjongwon" ]; then
-      #       echo "TS_KEY=${{ secrets.JONGWON_TS_AUTH_KEY }}" >> $GITHUB_ENV
-      #     elif [ "${{ github.actor }}" = "zeoxixx" ]; then
-      #       echo "TS_KEY=${{ secrets.ZEOXIXX_TS_AUTH_KEY }}" >> $GITHUB_ENV
-      #     fi
-
-      # 위에서 세팅된 환경변수(TS_KEY)를 받아와서 실제로 Tailscale에 로그인합니다.
-      # - name: Tailscale Login Execution
-      #   uses: tailscale/github-action@v2
-      #   with:
-      #     authkey: ${{ env.TS_KEY }}
-
-      # --------------------------------------------------
-      # 4. ansible 용 key setting (lb-key.pem)
-      # --------------------------------------------------
-      # - name: setup ssh key
-      #   run: |
-      #     mkdir -p ~/.ssh
-      #     echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/lb-key.pem
-      #     chmod 600 ~/.ssh/lb-key.pem
-      
-      # # 5. ansible playbook 실행 
-      # # 앤서블이 실서버에 접속해서 "방금 푸시한 도커 이미지 다운받아서 실행해!" 라고 명령하게 됩니다.
-      # - name: run ansible playbook
-      #   working-directory: ./infra/ansible # 폴더 지정
-      #   run: |
-      #     # 컨테이너 구동, 초기 데이터 주입 및 S3 백업 스케줄을 등록
-      #     ansible-playbook -i inventory.yml site.yml \
-      #       --private-key=~/.ssh/lb-key.pem \
-      #       -e "db_password=${{ secrets.DB_PASSWORD }}" \
-      #       -e "db_user=lb_user" \
-      #       -e "db_name=lb_db"
-
-      # ==========================================
+      # ================================================================
       # 🎯 [보안 최종단계] DAST: OWASP ZAP (동적 모의 해킹)
-      # ==========================================
-      # 앤서블이 서버를 무사히 가동했으므로, 살아있는 URL을 향해 공격을 찌릅니다.
+      # ================================================================
       - name: Run OWASP ZAP Baseline Scan
-      # 깃허브 API 변경점이 반영된 최신 안정 버전으로 교체합니다.
         uses: zaproxy/action-baseline@v0.14.0
         with:
-          # AWS 로드밸런서(ALB) DNS 주소나 연동된 도메인 주소
           target: ${{ env.APP_URL }}
-          
-          # 만약 특정 취약점이 나왔을 때 파이프라인을 실패(레드카드)로 만들고 싶다면 true로 둡니다.
-          # 처음 테스트할 때는 어떤 결과가 나오는지 보기 위해 false로 두고 관측해도 좋습니다.
           fail_action: false
