@@ -167,10 +167,10 @@ jobs:
           # 컨테이너 구동, 초기 데이터 주입 및 S3 백업 스케줄을 등록
           ansible-playbook -i inventory.yml site.yml \
             --private-key=~/.ssh/lb-key.pem \
-            -e "db_password=${{ secrets.DB_PASSWORD }}"
+            -e "db_password=${{ secrets.DB_PASSWORD }}" \
             -e "db_user=lb_user" \
             -e "db_name=lb_db"
-            
+
       # ==========================================
       # 🎯 [보안 최종단계] DAST: OWASP ZAP (동적 모의 해킹)
       # ==========================================
