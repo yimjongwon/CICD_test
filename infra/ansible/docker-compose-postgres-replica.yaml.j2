@@ -1,0 +1,67 @@
+version: '3.8'
+
+networks:
+  lb-net-replica:
+volumes:
+  pgdata_replica:
+
+services:
+  lb_database_replica:
+    image: postgres:15
+    container_name: lb-postgres-replica
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: lb-user
+      POSTGRES_PASSWORD: lb-user
+      POSTGRES_DB: lb-db
+      PRIMARY_HOST: "{{ hostvars['db-host']['ansible_host'] }}"
+    volumes:
+      - pgdata_replica:/var/lib/postgresql/data
+    entrypoint:
+      - bash
+      - -c
+      - |
+        if [ -s /var/lib/postgresql/data/PG_VERSION ]; then
+          if [ -f /var/lib/postgresql/data/postgresql.auto.conf ]; then
+            if ! grep -q "host=$${PRIMARY_HOST}" /var/lib/postgresql/data/postgresql.auto.conf; then
+              echo "Primary host IP changed! Re-initializing database..."
+              rm -rf /var/lib/postgresql/data/*
+            fi
+          fi
+        fi
+        if [ ! -s /var/lib/postgresql/data/PG_VERSION ]; then
+          echo "Cleaning up data directory before backup..."
+          rm -rf /var/lib/postgresql/data/*
+          echo "Waiting for primary database ($${PRIMARY_HOST})..."
+          until pg_isready -h $${PRIMARY_HOST}; do
+            sleep 2
+          done
+          echo "Starting pg_basebackup from primary ($${PRIMARY_HOST})..."
+          PGPASSWORD=lb-user pg_basebackup -h $${PRIMARY_HOST} -U lb-user -D /var/lib/postgresql/data -Fp -Xs -P -R
+          echo "Standby replica initialized!"
+        fi
+        echo "Fixing directory permissions for postgres..."
+        chown -R postgres:postgres /var/lib/postgresql/data
+        exec docker-entrypoint.sh postgres
+    networks:
+      - lb-net-replica
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    container_name: lb-db-node-exporter
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    command:
+      - --path.rootfs=/host
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: lb-db-postgres-exporter
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      DATA_SOURCE_NAME: "postgresql://lb-user:lb-user@localhost:5432/lb-db?sslmode=disable"

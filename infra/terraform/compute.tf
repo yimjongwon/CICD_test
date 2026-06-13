@@ -53,12 +53,13 @@ resource "aws_instance" "nat" {
     # 현재 부팅 즉시 적용 (단일 NIC라 -o 생략 = egress IF 자동 선택, ens5/eth0 무관)
     iptables -P FORWARD ACCEPT
     iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE
+    iptables -t mangle -A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
 
     # 재부팅 시 재적용 (iptables-services 대체용 oneshot, 중복 방지 -C||-A)
     cat <<'SYSTEMD' > /etc/systemd/system/nat.service
     [Unit]
-    Description=NAT Instance Port Forwarding
-    After=network.target
+    Description=NAT Instance MASQUERADE
+    After=network-online.target
     Wants=network-online.target
 
     [Service]
@@ -67,7 +68,8 @@ resource "aws_instance" "nat" {
     ExecStart=/usr/sbin/iptables -P FORWARD ACCEPT
     ExecStart=/sbin/iptables -I FORWARD -j ACCEPT
     ExecStart=/bin/bash -c '/usr/sbin/iptables -t nat -C POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE 2>/dev/null || /usr/sbin/iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE'
-    
+    ExecStart=/usr/sbin/iptables -t mangle -A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+
     [Install]
     WantedBy=multi-user.target
     SYSTEMD
@@ -160,6 +162,7 @@ resource "aws_launch_template" "app" {
 
     # 1) Tailscale 노드 가입 (node-to-node, accept-routes=false)
     #    네트워크 egress 준비될 때까지 설치 재시도 + IMDSv2 토큰 재시도 (early-boot 안전)
+    dnf install -y iptables
     until curl -fsSL https://tailscale.com/install.sh | sh; do sleep 3; done
     systemctl enable --now tailscaled
     until TOKEN=$(curl -sf -X PUT "http://169.254.169.254/latest/api/token" \
@@ -173,64 +176,31 @@ resource "aws_launch_template" "app" {
       --hostname="$HN" \
       --ssh                       # 선택: tailscale ssh break-glass (ACL ssh 섹션 필요)
 
-    # 2) 시스템 업데이트 및 도커/도커 컴포즈 플러그인 설치
+    # 2) 도커 엔진 기본 설치
     dnf update -y
-    dnf install -y docker
-    mkdir -p /usr/local/lib/docker/cli-plugins
-    curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
-    chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-    systemctl enable --now docker
+    dnf install -y docker && systemctl enable --now docker
 
-    # 3) 배포용 디렉토리 빌드
-    mkdir -p /home/ec2-user/project2-security/docker
-    cd /home/ec2-user/project2-security/docker
+    # 3) Nginx와 app이 서로 통신할 가상 브리지 네트워크 구축
+    docker network create lockbank-net || true
 
-    # 4) Nginx 역방향 프록시 설정파일 생성
-    cat << 'EOF' > default.conf
-    server {
-        listen 80;
-        server_name localhost;
+    # 4) [App 컨테이너 가동] 이름을 lockbank-app으로 단일화하고 가상망 탑승 및 DB 환경변수 주입
+    docker pull ${var.app_image} || true
+    docker run -d --restart=always \
+      --net lockbank-net \
+      --name lockbank-app \
+      -p 8080:8080 \
+      -e DB_HOST_MAIN="${aws_instance.db.private_ip}" \
+      -e DB_HOST_REPLICA="${var.db_host_replica}" \
+      -e DB_USER="${var.db_user}" \
+      -e DB_PASSWORD="${var.db_password}" \
+      -e DB_NAME="${var.db_name}" \
+       ${var.app_image}
 
-        location / {
-            proxy_pass http://lockbank-app:8080;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        }
-    }
-    EOF
-
-    # 5) 멀티 컨테이너 환경을 정의하는 docker-compose.yml 동적 생성
-    cat << 'EOF' > docker-compose.yml
-    version: '3.8'
-
-    services:
-      lockbank-app:
-        image: ${var.app_image}
-        container_name: lockbank-app
-        restart: always
-        expose:
-          - "8080"
-        environment:
-          - DB_HOST=${aws_instance.db.private_ip}
-
-      nginx:
-        image: nginx:alpine
-        container_name: lockbank-nginx
-        restart: always
-        ports:
-          - "80:80"
-        volumes:
-          - ./default.conf:/etc/nginx/conf.d/default.conf:ro
-        depends_on:
-          - lockbank-app
-    EOF
-
-    # 5. 컴포즈 스택 구동 (기존 앤서블의 최종 실행 버튼 역할을 가상머신이 스스로 수행)
-    docker compose up -d
+    # 5) 익스포터 — ★0.0.0.0 바인딩이어야 100.x로 긁힘 (B 트랙)
+    docker run -d --restart=always --net=host --name node-exporter \
+      quay.io/prometheus/node-exporter
   USERDATA
   )
-
 
   tag_specifications {
     resource_type = "instance"

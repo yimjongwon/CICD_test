@@ -1,0 +1,59 @@
+---
+- name: Rocky Linux 8 / AL2023 도커 및 PostgreSQL 복제(Replica) DB 가동 플레이북
+  hosts: lb-postgres-replica  
+  remote_user: user1
+  vars:
+    ansible_ssh_private_key_file: "{{ playbook_dir }}/../terraform/lb-key.pem"
+  become: true        # sudo 권한으로 실행
+  gather_facts: true  # 대상 서버 정보 수집
+
+  tasks:
+    - name: "Tailscale 설치 (스크립트 활용)"
+      ansible.builtin.shell: curl -fsSL https://tailscale.com/install.sh | sh
+      args:
+        creates: /usr/bin/tailscale
+
+    - name: "Tailscale 서비스 시작 및 활성화"
+      ansible.builtin.systemd:
+        name: tailscaled
+        state: started
+        enabled: yes
+
+    - name: "Tailscale 상태 확인 (이미 연결되어 있는지)"
+      ansible.builtin.command: tailscale status
+      register: tailscale_status
+      ignore_errors: true
+      changed_when: false
+
+    - name: "Tailscale Tailnet 연결 (authkey 사용)"
+      ansible.builtin.command:
+        cmd: tailscale up --authkey={{ tailscale_authkey }} --accept-routes=false --hostname=lb-postgres-replica
+      when: tailscale_authkey is defined and tailscale_status.rc != 0
+
+    - name: "도커 및 Compose 엔진 공통 셋업"
+      ansible.builtin.include_tasks: tasks/setup_docker.yml
+
+    - name: "7단계: 프로젝트 디렉토리 생성"
+      ansible.builtin.file:
+        path: /home/user1/postgres
+        state: directory
+        owner: user1
+        group: user1
+        mode: '0755'
+
+    - name: "8단계: docker-compose-postgres-replica.yaml.j2 템플릿 렌더링 및 복사"
+      ansible.builtin.template:
+        src: docker-compose-postgres-replica.yaml.j2
+        dest: /home/user1/postgres/docker-compose.yaml
+        owner: user1
+        group: user1
+        mode: '0644'
+
+    - name: "9단계: Docker Compose를 활용하여 PostgreSQL Replica 컨테이너 기동"
+      ansible.builtin.shell:
+        cmd: docker compose up -d
+        chdir: /home/user1/postgres
+
+    - name: "설치 완료 확인 로그 출력"
+      ansible.builtin.debug:
+        msg: "도커 및 PostgreSQL Replica DB 설치/기동이 성공적으로 완료되었습니다! 버전: {{ docker_version_output.stdout }}"

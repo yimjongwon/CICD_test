@@ -35,8 +35,8 @@ terraform {
     # bucket 은 개인별(S3 전역 고유) → -backend-config=hcl/backend.hcl 로 주입
     key            = "infra/terraform.tfstate" # /infra/하위에 만들어 지도록
     region         = "ap-northeast-2"
-    dynamodb_table = "lb-tf-lock" # 미리 준비된 dynamodb 테이블의 이름을 명시하면 lock 상태가 자동으로 관리된다.
-    encrypt        = true         # tfstate에는 민감한 정보가 있을 수 있기 때문에 암호화
+    dynamodb_table = "DynamoDB-terraform-lock" # 미리 준비된 dynamodb 테이블의 이름을 명시하면 lock 상태가 자동으로 관리된다.
+    encrypt        = true                      # tfstate에는 민감한 정보가 있을 수 있기 때문에 암호화
   }
 }
 
@@ -58,8 +58,6 @@ locals {
   # cloudflare 리소스는 count=0(dns_provider≠cloudflare)이라 더미로 실제 API 호출 없음.
   # range(40)으로 길이를 코드가 보장 → 0 개수 오타 위험 제거.
   cloudflare_dummy_token = join("", [for _ in range(40) : "0"])
-  # (다른 간단 버전 코드) 
-  # cloudflare_dummy_token = format("%040d", 0)   # 0을 40자리 zero-pad = "0"×40
 }
 
 # Cloudflare provider — dns_provider="cloudflare" 일 때만 실제 사용

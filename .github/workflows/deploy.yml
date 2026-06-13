@@ -1,4 +1,4 @@
-# test01/.github/workflows/deploy.yml
+# cicd_test/.github/workflows/deploy.yml
 
 
 name: "Terraform Apply(수동)"
@@ -86,7 +86,13 @@ jobs:
 
           # 최신 빌드된 이미지를 반영하도록 테라폼 변수 주입 지정
           # 만약 특정 버전 태그를 고정하고 싶다면 github.run_number
-          export TF_VAR_app_image="${{ secrets.DOCKERHUB_USERNAME }}/hub-app:latest"
+          export TF_VAR_app_image="${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest"
+
+          # 🚀 [안전장치] S3 백엔드 설정이 비어있는 팀원이 실행했을 때 예외 처리
+          if [ -z "${MY_BUCKET}" ]; then
+            echo "❌ 해당 개발자(${{ github.actor }})의 S3 Backend 설정이 없어 배포를 중단합니다. 로컬 백엔드를 쓰거나 설정을 채워주세요."
+            exit 1
+          fi
 
           # 테라폼 초기화
           terraform init \
@@ -110,12 +116,15 @@ jobs:
             echo "APP_URL=https://${SVC_DOMAIN}" >> $GITHUB_ENV
           fi
 
+          # 제대로 담겼는지 깃허브 액션 콘솔에서 확인하기 위한 한 줄
+          echo "🎯 타겟 APP_URL이 설정되었습니다: ${{ env.APP_URL }}"
+
       # init.sql파일 가공 작업
       - name: Create Temporary init.sql from Secret
         run: |
           #  $GITHUB_WORKSPACE: 프로젝트 최상위 루트 절대 경로
-          mkdir -p $GITHUB_WORKSPACE/docker
-          cat << 'EOF' > $GITHUB_WORKSPACE/docker/init.sql
+          mkdir -p $GITHUB_WORKSPACE/infra/ansible
+          cat << 'EOF' > $GITHUB_WORKSPACE/infra/ansible/init.sql
           ${{ secrets.INIT_SQL_CONTENT }}
           EOF
           
@@ -134,10 +143,8 @@ jobs:
         working-directory: ./infra/ansible # 폴더 지정
         run: |
           # 컨테이너 구동, 초기 데이터 주입 및 S3 백업 스케줄을 등록
-          ansible-playbook -i hosts site.yml --private-key=~/.ssh/lb-key.pem
+          ansible-playbook -i inventory.yml site.yml --private-key=~/.ssh/lb-key.pem
           
-
-
       # ==========================================
       # 🎯 [보안 최종단계] DAST: OWASP ZAP (동적 모의 해킹)
       # ==========================================

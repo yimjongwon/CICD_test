@@ -1,4 +1,4 @@
-# ~/project2-security/.github/workflows/destroy.yml
+# ~/cicd_test/.github/workflows/destroy.yml
 
 
 name: "Terraform Destroy"
@@ -78,6 +78,12 @@ jobs:
             export TF_VAR_tailscale_api_key="${{ secrets.ZEOXIXX_TS_API_KEY }}"
             export TF_VAR_cloudflare_api_token="${{ secrets.ZEOXIXX_CF_TOKEN }}"
             export TF_VAR_domain_name="${{ secrets.ZEOXIXX_DOMAIN }}"
+          fi
+
+          # 🚀 [안전장치] Destroy 시에도 S3 백엔드가 비어있는 팀원은 실행 차단
+          if [ -z "${MY_BUCKET}" ]; then
+            echo "❌ 해당 개발자(${{ github.actor }})의 S3 Backend 설정이 없어 인프라 삭제를 중단합니다."
+            exit 1
           fi
 
           # hcl 파일에서 주입

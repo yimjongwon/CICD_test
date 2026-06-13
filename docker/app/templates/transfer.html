@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>LockBank Transfer</title>
+
+    <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+
+        body {
+
+            margin: 0;
+
+            font-family: Arial, sans-serif;
+
+            background: #f4f7fb;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            height: 100vh;
+        }
+
+        .transfer-box {
+
+            width: 420px;
+
+            background: white;
+
+            padding: 40px;
+
+            border-radius: 18px;
+
+            box-shadow:
+                0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .title {
+
+            font-size: 30px;
+            font-weight: bold;
+
+            color: #1d4ed8;
+
+            margin-bottom: 10px;
+
+            text-align: center;
+        }
+
+        .subtitle {
+
+            text-align: center;
+
+            color: #666;
+
+            margin-bottom: 30px;
+        }
+
+        input {
+
+            width: 100%;
+
+            padding: 14px;
+
+            margin-bottom: 18px;
+
+            border:
+                1px solid #d1d5db;
+
+            border-radius: 10px;
+
+            box-sizing: border-box;
+
+            font-size: 14px;
+        }
+
+        input:focus {
+
+            outline: none;
+
+            border-color: #2563eb;
+        }
+
+        button {
+
+            width: 100%;
+
+            padding: 14px;
+
+            border: none;
+
+            border-radius: 10px;
+
+            background: #1d4ed8;
+
+            color: white;
+
+            font-size: 15px;
+            font-weight: bold;
+
+            cursor: pointer;
+        }
+
+        button:hover {
+
+            background: #1e40af;
+        }
+
+        .message {
+            text-align: center;
+            color: #16a34a;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .error {
+            text-align: center;
+            color: #dc2626;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .back {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: #1d4ed8;
+            text-decoration: none;
+        }
+
+        .server-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            font-size: 12px;
+            color: #6b7280;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 4px 8px;
+            border-radius: 4px;
+            z-index: 1000;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="server-info">
+    <i class="fa-solid fa-server"></i> {{ server_info }}
+</div>
+
+<div class="transfer-box">
+
+    <div class="title">
+        <i class="fa-solid fa-money-bill-transfer"></i>
+        Transfer
+    </div>
+
+    <div class="subtitle">
+        Secure Transaction Request
+    </div>
+
+    {% if message %}
+    <div class="message">
+        {{ message }}
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="error">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form action="/transfer" method="post">
+
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <input
+            type="text"
+            placeholder="Recipient Account"
+            name="account"
+        >
+
+        <input
+            type="number"
+            placeholder="Amount"
+            name="amount"
+        >
+
+        <button type="submit">
+            Submit Transfer
+        </button>
+
+    </form>
+
+    <a class="back" href="/dashboard">
+        Back to Dashboard
+    </a>
+
+</div>
+
+</body>
+</html>

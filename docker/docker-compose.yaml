@@ -1,18 +1,9 @@
 version: '3.8'
 
-networks:
-  app-network:
-    driver: bridge
 services:
   hub-app: # service 의 이름은 마음대로 지을 수 있다.
     image: yimjongwon/hub-app:latest # 빌드된 이미지 이름 설정
     container_name: hub-app
     pull_policy: always
     ports:
-      - "80:8080"
-    environment:
-      # Ansible이 실행되면서 DB 서버의 IP 주소를 동적으로 주입합니다.
-      DB_URL: "postgresql://scott:tiger@{{ hostvars['db_server']['ansible_host'] }}:5432/scott_db"
-    networks:
-      - app-network
-    restart: always
+      - "8080:8080"

@@ -164,6 +164,27 @@ variable "admin_ingress_cidr" {
 }
 
 variable "app_image" {
-  type    = string
-  default = "lockandlock/lock-app:latest"
+  type        = string
+  description = "FastAPI 애플리케이션의 Docker 이미지 경로 (Makefile 등에서 자동 주입)"
+}
+
+variable "db_host_replica" {
+  description = "Replica DB의 IP (Tailscale IP)"
+  type        = string
+}
+
+variable "db_user" {
+  description = "DB 사용자 이름"
+  type        = string
+}
+
+variable "db_password" {
+  description = "DB 비밀번호"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_name" {
+  description = "DB 이름"
+  type        = string
 }

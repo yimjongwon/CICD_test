@@ -1,0 +1,86 @@
+---
+- name: Amazon Linux 2023 도커 및 PostgreSQL 메인 DB 가동 플레이북
+  hosts: lb-postgres-main  
+  remote_user: user1
+  vars:
+    ansible_ssh_private_key_file: "{{ playbook_dir }}/../terraform/lb-key.pem"
+  become: true
+  gather_facts: false     # wait_for_connection 이전에 SSH 연결 시도 차단
+
+  tasks:
+    - name: "SSH 연결 안정화 대기 (최대 3분)"
+      ansible.builtin.wait_for_connection:
+        connect_timeout: 10
+        delay: 3
+        sleep: 5
+        timeout: 180
+
+    - name: "Facts 수집"
+      ansible.builtin.setup:
+
+    - name: "도커 및 Compose 엔진 공통 셋업"
+      ansible.builtin.include_tasks: tasks/setup_docker.yml
+
+    - name: "7단계: 프로젝트 디렉토리 생성"
+      ansible.builtin.file:
+        path: /home/user1/postgres
+        state: directory
+        owner: user1
+        group: user1
+        mode: '0755'
+
+    - name: "8.1단계: docker-compose.yaml 복사 및 이름 변경"
+      ansible.builtin.copy:
+        src: docker-compose-postgres-main.yaml
+        dest: /home/user1/postgres/docker-compose.yaml
+        owner: user1
+        group: user1
+        mode: '0644'
+
+    - name: "8.2단계: init.sql 복사"
+      ansible.builtin.copy:
+        src: init.sql
+        dest: /home/user1/postgres/init.sql
+        owner: user1
+        group: user1
+        mode: '0644'
+
+    - name: "8.3단계: init-replication.sh 복사"
+      ansible.builtin.copy:
+        src: init-replication.sh
+        dest: /home/user1/postgres/init-replication.sh
+        owner: user1
+        group: user1
+        mode: '0755'
+
+    - name: "9단계: Docker Compose를 활용하여 PostgreSQL 컨테이너 기동"
+      ansible.builtin.shell:
+        cmd: docker compose up -d
+        chdir: /home/user1/postgres
+
+    - name: "10단계: aws-cli 설치 (백업용)"
+      ansible.builtin.dnf:
+        name: awscli
+        state: present
+
+    - name: "10.5단계: cronie 설치 (AL2023 기본 패키지 부재 해결)"
+      ansible.builtin.dnf:
+        name: cronie
+        state: present
+
+    - name: "10.6단계: crond 서비스 활성화"
+      ansible.builtin.systemd:
+        name: crond
+        state: started
+        enabled: yes
+
+    - name: "11단계: S3 백업 cron 설정 (instance profile라 키 불필요)"
+      ansible.builtin.cron:
+        name: pg_dump_to_s3
+        minute: "0"
+        hour: "3"
+        job: "/usr/bin/docker exec -e PGPASSWORD='lb-user' lb-postgres-main pg_dump -U lb-user lb-db | /usr/bin/gzip | /usr/bin/aws s3 cp - s3://{{ db_backup_bucket }}/pg_$(date +\\%F).sql.gz"
+
+    - name: "설치 완료 확인 로그 출력"
+      ansible.builtin.debug:
+        msg: "도커, PostgreSQL DB 배포 및 S3 백업 크론 설정이 성공적으로 완료되었습니다! 버전: {{ docker_version_output.stdout }}"

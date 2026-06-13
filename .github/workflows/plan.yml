@@ -16,13 +16,12 @@ jobs:
         id: changes
         uses: dorny/paths-filter@v3
         with:
-          base: ${{ github.event.before }}
           filters: |
             docker_updated:
               - 'docker/Dockerfile'           # 도커 빌드 메커니즘 변경 시
-              - 'docker-compose.yml'          # 컨테이너 구성 변경 시
+              - 'docker-compose.yaml'         # 컨테이너 구성 변경 시
               - 'docker/requirements.txt'     # 파이썬 패키지 의존성 변경 시
-              - 'docker/app/**/*.py'          # 오직 파이썬 실행 코드(.py)가 바뀔 때만 감지!
+              - 'docker/app/**'               # app 폴더 하위의 모든 파일(main.py, html, etc...) 감지
               - '!docker/app/**/*.md'         # ❌ 앱 폴더 내 설명서(.md) 변경은 무시!
               - '!docker/app/**/README*'      # ❌ README 파일 변경도 무시!
 
@@ -129,11 +128,11 @@ jobs:
           # 내 도커허브 계정명/이미지명:태그 형태로 빌드합니다.
           docker build \
           --build-arg GITHUB_ACTOR="${{ github.actor }}" \
-          -t ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }} .
+          -t ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }} .
 
           # 방금 만든 숫자가 붙은 이미지를 기반으로 'latest' 이름표 하나 더 붙여주기
-          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }} \
-          ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:latest
+          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }} \
+          ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest
 
       # ==========================================
       # [보안 2단계] Container Scan: Trivy (이미지 검사)
@@ -143,7 +142,7 @@ jobs:
         if: steps.changes.outputs.docker_updated == 'true'
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }}'
+          image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }}'
           format: 'table'
           exit-code: '1' # CRITICAL, HIGH 취약점 발견 시 빌드를 실패 처리하고 배포 차단
           ignore-unfixed: true
@@ -155,6 +154,6 @@ jobs:
       - name: Push Docker Image
         if: steps.changes.outputs.docker_updated == 'true'
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:${{ github.run_number }}
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/hub-app:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest
 

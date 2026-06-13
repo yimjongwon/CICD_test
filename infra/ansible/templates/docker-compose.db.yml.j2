@@ -9,4 +9,21 @@ services:
       POSTGRES_PASSWORD: "{{ db_password }}"   # 위 ⒜/⒝로 주입
     volumes: [ "pgdata:/var/lib/postgresql/data" ]
     ports: [ "5432:5432" ]
+    
+  node-exporter:                       # 호스트 CPU/메모리/디스크/up
+    image: prom/node-exporter:v1.8.1
+    container_name: lb-db-node-exporter
+    restart: unless-stopped
+    network_mode: host                 # 호스트 지표 + 0.0.0.0:9100 → 100.x:9100
+    pid: host
+    volumes: [ "/:/host:ro,rslave" ]
+    command: [ "--path.rootfs=/host" ]
+
+  postgres-exporter:                   # DB 커넥션/쿼리/복제 지표
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: lb-db-postgres-exporter
+    restart: unless-stopped
+    network_mode: host                 # localhost:5432 접속 + 0.0.0.0:9187 → 100.x:9187
+    environment:
+      DATA_SOURCE_NAME: "postgresql://{{ db_user }}:{{ db_password }}@localhost:5432/{{ db_name }}?sslmode=disable"  
 volumes: { pgdata: {} }

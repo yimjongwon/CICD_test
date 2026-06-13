@@ -1,0 +1,70 @@
+---
+# 공통 도커 엔진 및 Compose 설치 태스크
+
+- name: "1단계: Podman 및 관련 충돌 패키지 제거"
+  ansible.builtin.dnf:
+    name:
+      - podman
+      - buildah
+      - podman-docker
+    state: absent
+
+- name: "2단계: 시스템 패키지 업데이트 및 메타데이터 캐시 갱신"
+  ansible.builtin.dnf:
+    update_cache: true
+
+- name: "2.5단계: Docker CE 공식 리포지토리 추가 (Rocky Linux 전용)"
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/centos/docker-ce.repo
+    dest: /etc/yum.repos.d/docker-ce.repo
+    mode: '0644'
+  when: ansible_distribution == "Rocky"
+
+- name: "3단계: 도커 엔진 설치 (Amazon Linux)"
+  ansible.builtin.dnf:
+    name:
+      - docker
+    state: present
+  when: ansible_distribution == "Amazon"
+
+- name: "3단계: 도커 엔진 설치 (Rocky Linux)"
+  ansible.builtin.dnf:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    state: present
+  when: ansible_distribution == "Rocky"
+
+- name: "3.5단계: Docker Compose v2 플러그인 폴더 생성"
+  ansible.builtin.file:
+    path: /usr/libexec/docker/cli-plugins
+    state: directory
+    mode: '0755'
+
+- name: "3.6단계: GitHub에서 Docker Compose v2 바이너리 다운로드"
+  ansible.builtin.get_url:
+    url: https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64
+    dest: /usr/libexec/docker/cli-plugins/docker-compose
+    mode: '0755'
+  register: compose_download
+  until: compose_download is success
+  retries: 3
+  delay: 5
+
+- name: "4단계: 도커 서비스 활성화 및 즉시 시작"
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: "5단계: 현재 원격 접속 사용자(user1)에게 도커 권한 부여"
+  ansible.builtin.user:
+    name: "{{ ansible_user | default('user1') }}"
+    groups: docker
+    append: true
+
+- name: "6단계: 도커 권한 변경 사항 적용을 위해 도커 데몬 및 연결 세션 확인"
+  ansible.builtin.command: docker info
+  register: docker_version_output
+  changed_when: false

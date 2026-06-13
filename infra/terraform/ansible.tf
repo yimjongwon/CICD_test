@@ -26,10 +26,26 @@ resource "local_file" "ansible_inventory" {
               ansible_host: ${local.db_ts_ip}
               ansible_user: ec2-user
               ansible_ssh_private_key_file: ${abspath(local_file.ssh_key.filename)}
+        bastion:
+          hosts:
+            bastion:
+              ansible_host: ${aws_instance.bastion.public_ip}
+        lb-postgres-main:
+          hosts:
+            db-host:
+              ansible_host: ${local.db_ts_ip}
+        lb-postgres-replica:
+          hosts:
+            replica-host:
+              ansible_connection: local
+              ansible_host: localhost
       vars:
         project: ${var.project}
         db_backup_bucket: ${aws_s3_bucket.db_backup.bucket}
         ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+        tailscale_authkey: ${tailscale_tailnet_key.ec2_join.key}
+        tailscale_api_key: ${var.tailscale_api_key}
+        tailnet_name: ${var.tailnet_name}
   EOT
 }
 

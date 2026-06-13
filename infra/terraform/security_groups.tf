@@ -73,8 +73,8 @@ resource "aws_security_group" "app_sg" {
 
   ingress {
     description     = "HTTP from ALB"
-    from_port       = 80
-    to_port         = 80
+    from_port       = 8080 # 80->8080 임시
+    to_port         = 8080 # 80->8080 임시
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_sg.id]
   }

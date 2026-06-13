@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>LockBank Login</title>
+
+    <link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+
+        body {
+            margin: 0;
+            padding: 0;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            height: 100vh;
+
+            background: #f4f7fb;
+
+            font-family: Arial, sans-serif;
+        }
+
+        .login-box {
+
+            width: 360px;
+
+            background: white;
+
+            padding: 40px;
+
+            border-radius: 16px;
+
+            box-shadow:
+                0 4px 20px rgba(0, 0, 0, 0.08);
+
+        }
+
+        .logo {
+
+            text-align: center;
+
+            font-size: 32px;
+            font-weight: bold;
+
+            color: #1d4ed8;
+
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+
+            text-align: center;
+
+            color: #666;
+
+            margin-bottom: 30px;
+        }
+
+        input {
+
+            width: 100%;
+
+            padding: 14px;
+
+            margin-bottom: 16px;
+
+            border:
+                1px solid #d1d5db;
+
+            border-radius: 10px;
+
+            box-sizing: border-box;
+
+            font-size: 14px;
+        }
+
+        input:focus {
+
+            outline: none;
+
+            border-color: #2563eb;
+        }
+
+        button {
+
+            width: 100%;
+
+            padding: 14px;
+
+            border: none;
+
+            border-radius: 10px;
+
+            background: #1d4ed8;
+
+            color: white;
+
+            font-size: 15px;
+            font-weight: bold;
+
+            cursor: pointer;
+        }
+
+        button:hover {
+
+            background: #1e40af;
+        }
+
+        .error {
+            color: red;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .server-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            font-size: 12px;
+            color: #6b7280;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 4px 8px;
+            border-radius: 4px;
+            z-index: 1000;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="server-info">
+    <i class="fa-solid fa-server"></i> {{ server_info }}
+</div>
+
+<div class="login-box">
+
+    <div class="logo">
+        <i class="fa-solid fa-globe"></i>
+        LockBank
+    </div>
+
+    <div class="subtitle">
+        Secure Financial Service
+    </div>
+
+    {% if error %}
+    <div class="error">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form action="/login" method="post">
+
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <input
+            type="text"
+            name="username"
+            placeholder="Username"
+        >
+
+        <input
+            type="password"
+            name="password"
+            placeholder="Password"
+        >
+
+        <button type="submit">
+            Login
+        </button>
+
+    </form>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,59 @@
+---
+- name: Bastion 서버에 모니터링 스택 배포 및 기동 플레이북
+  hosts: bastion
+  remote_user: user1
+  vars:
+    ansible_ssh_private_key_file: "{{ playbook_dir }}/../terraform/lb-key.pem"
+    ts_api_key: "{{ tailscale_api_key }}"
+    ts_tailnet: "{{ tailnet_name }}"
+  become: true
+
+  tasks:
+    - name: "0.1단계: DNS 서버 보조 추가 (8.8.8.8)"
+      ansible.builtin.lineinfile:
+        path: /etc/resolv.conf
+        line: "nameserver 8.8.8.8"
+        state: present
+        insertafter: EOF
+        create: false
+
+    - name: "0.5단계: 도커 및 Compose 엔진 공통 셋업"
+      ansible.builtin.include_tasks: tasks/setup_docker.yml
+
+    - name: "1단계: 모니터링 프로젝트 디렉토리 생성"
+      ansible.builtin.file:
+        path: /home/user1/monitoring
+        state: directory
+        owner: user1
+        group: user1
+        mode: '0755'
+
+    - name: "2단계: 모니터링 관련 모든 리소스 복사"
+      ansible.builtin.copy:
+        src: ../../monitoring/
+        dest: /home/user1/monitoring/
+        owner: user1
+        group: user1
+        mode: '0644'
+
+    - name: "3단계: 원격 디렉토리 권한 정리 (실행 스크립트 등)"
+      ansible.builtin.file:
+        path: /home/user1/monitoring/recovery/actions/docker_restart.sh
+        mode: '0755'
+
+    - name: "4단계: 모니터링 .env 파일 생성"
+      ansible.builtin.copy:
+        dest: /home/user1/monitoring/.env
+        content: |
+          TS_API_KEY={{ ts_api_key }}
+          TS_TAILNET={{ ts_tailnet }}
+          GF_SECURITY_ADMIN_USER=admin
+          GF_SECURITY_ADMIN_PASSWORD=admin
+        owner: user1
+        group: user1
+        mode: '0600'
+
+    - name: "5단계: 모니터링 docker-compose 기동"
+      ansible.builtin.shell:
+        cmd: docker compose -f docker-compose.monitoring.yaml up -d
+        chdir: /home/user1/monitoring
