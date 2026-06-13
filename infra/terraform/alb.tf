@@ -112,11 +112,11 @@ resource "aws_lb_listener" "https" {
 
   default_action {
     type             = "forward"
-    target_group_arn = var.active_color == "green" ? aws_lb_target_group.green.arn : aws_lb_target_group.blue.arn
+    target_group_arn = aws_lb_target_group.blue.arn
   }
 
   # Rollback 전환은 운영 중 TG 변경 → default_action 변경 무시
-  # lifecycle {
-  #   ignore_changes = [default_action] # ★ 런타임 TG 전환 보존
-  # }
+  lifecycle {
+    ignore_changes = [default_action] # ★ 런타임 TG 전환 보존
+  }
 }
