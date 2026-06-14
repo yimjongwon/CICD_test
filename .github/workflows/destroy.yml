@@ -7,6 +7,7 @@ on:
 jobs:
   terraform-destroy:
     runs-on: ubuntu-latest
+    environment: ${{ github.actor }}
     steps:
       # 1. 소스코드 체크아웃
       - name: Checkout Source Code
@@ -19,77 +20,27 @@ jobs:
       # 3. 개별 백엔드 및 AWS 계정 분기 후 Destroy 실행
       - name: Terraform Init & Destroy
         working-directory: ./infra/terraform # 폴더 지정
+        env:
+          # 공통 이름으로 정리된 환경 시크릿을 깔끔하게 주입합니다.
+          AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_KEY }}
+          TF_VAR_admin_ingress_cidr: ${{ secrets.IP }}
+          TF_VAR_tailnet_name: ${{ secrets.TAILNET }}
+          TF_VAR_tailscale_api_key: ${{ secrets.TS_API_KEY }}
+          TF_VAR_cloudflare_api_token: ${{ secrets.CF_TOKEN }}
+          TF_VAR_domain_name: ${{ format('lockbank.{0}', secrets.DOMAIN) }}
+          TF_VAR_route53_zone_name: ${{ secrets.DOMAIN }}
         run: |
-          export TF_VAR_route53_zone_name=""
-
-          # 푸시하거나 버튼을 누른 사람(github.actor)에 따라 모든 정보 동적 할당
-          if [ "${{ github.actor }}" = "ShinJunhan" ]; then
-            MY_BUCKET=""
-            MY_TABLE=""
-            export AWS_ACCESS_KEY_ID="${{ secrets.JUNHAN_ACCESS_KEY }}"
-            export AWS_SECRET_ACCESS_KEY="${{ secrets.JUNHAN_SECRET_KEY }}"
-            export TF_VAR_admin_ingress_cidr="${{ secrets.JUNHAN_IP }}"
-            export TF_VAR_tailnet_name="${{ secrets.JUNHAN_TAILNET }}"
-            export TF_VAR_tailscale_api_key="${{ secrets.JUNHAN_TS_API_KEY }}"
-            export TF_VAR_cloudflare_api_token="${{ secrets.JUNHAN_CF_TOKEN }}"
-            export TF_VAR_domain_name="${{ secrets.JUNHAN_DOMAIN }}"
-
-          elif [ "${{ github.actor }}" = "KTCLIF" ]; then
-            MY_BUCKET=""
-            MY_TABLE=""
-            export AWS_ACCESS_KEY_ID="${{ secrets.KTCLIF_ACCESS_KEY }}"
-            export AWS_SECRET_ACCESS_KEY="${{ secrets.KTCLIF_SECRET_KEY }}"
-            export TF_VAR_admin_ingress_cidr="${{ secrets.KTCLIF_IP }}"
-            export TF_VAR_tailnet_name="${{ secrets.KTCLIF_TAILNET }}"
-            export TF_VAR_tailscale_api_key="${{ secrets.KTCLIF_TS_API_KEY }}"
-            export TF_VAR_cloudflare_api_token="${{ secrets.KTCLIF_CF_TOKEN }}"
-            export TF_VAR_domain_name="${{ secrets.KTCLIF_DOMAIN }}"
-
-          elif [ "${{ github.actor }}" = "tkddn3901" ]; then
-            MY_BUCKET=""
-            MY_TABLE=""
-            export AWS_ACCESS_KEY_ID="${{ secrets.SANGWOO_ACCESS_KEY }}"
-            export AWS_SECRET_ACCESS_KEY="${{ secrets.SANGWOO_SECRET_KEY }}"
-            export TF_VAR_admin_ingress_cidr="${{ secrets.SANGWOO_IP }}"
-            export TF_VAR_tailnet_name="${{ secrets.SANGWOO_TAILNET }}"
-            export TF_VAR_tailscale_api_key="${{ secrets.SANGWOO_TS_API_KEY }}"
-            export TF_VAR_cloudflare_api_token="${{ secrets.SANGWOO_CF_TOKEN }}"
-            export TF_VAR_domain_name="${{ secrets.SANGWOO_DOMAIN }}"
-
-          elif [ "${{ github.actor }}" = "yimjongwon" ]; then
-            MY_BUCKET="tfstate-bucket-348876a9"
-            MY_TABLE="DynamoDB-terraform-lock"
-            export AWS_ACCESS_KEY_ID="${{ secrets.JONGWON_ACCESS_KEY }}"
-            export AWS_SECRET_ACCESS_KEY="${{ secrets.JONGWON_SECRET_KEY }}"   
-            export TF_VAR_admin_ingress_cidr="${{ secrets.JONGWON_IP }}"
-            export TF_VAR_tailnet_name="${{ secrets.JONGWON_TAILNET }}"
-            export TF_VAR_tailscale_api_key="${{ secrets.JONGWON_TS_API_KEY }}"
-            export TF_VAR_cloudflare_api_token="${{ secrets.JONGWON_CF_TOKEN }}"
-            export TF_VAR_domain_name="${{ secrets.JONGWON_DOMAIN }}"
-            export TF_VAR_route53_zone_name="${{ secrets.JONGWON_DOMAIN }}"
-            
-          elif [ "${{ github.actor }}" = "zeoxixx" ]; then
-            MY_BUCKET=""
-            MY_TABLE=""
-            export AWS_ACCESS_KEY_ID="${{ secrets.ZEOXIXX_ACCESS_KEY }}"
-            export AWS_SECRET_ACCESS_KEY="${{ secrets.ZEOXIXX_SECRET_KEY }}"
-            export TF_VAR_admin_ingress_cidr="${{ secrets.ZEOXIXX_IP }}"
-            export TF_VAR_tailnet_name="${{ secrets.ZEOXIXX_TAILNET }}"
-            export TF_VAR_tailscale_api_key="${{ secrets.ZEOXIXX_TS_API_KEY }}"
-            export TF_VAR_cloudflare_api_token="${{ secrets.ZEOXIXX_CF_TOKEN }}"
-            export TF_VAR_domain_name="${{ secrets.ZEOXIXX_DOMAIN }}"
-          fi
-
-          # 🚀 [안전장치] Destroy 시에도 S3 백엔드가 비어있는 팀원은 실행 차단
-          if [ -z "${MY_BUCKET}" ]; then
-            echo "❌ 해당 개발자(${{ github.actor }})의 S3 Backend 설정이 없어 인프라 삭제를 중단합니다."
+          # 🚀 [안전장치] GitHub Environment에 백엔드 설정(MY_BUCKET)이 없으면 즉시 차단
+          if [ -z "${{ secrets.MY_BUCKET }}" ]; then
+            echo "❌ 해당 개발자(${{ github.actor }})의 S3 Backend(MY_BUCKET) 설정이 GitHub Environment에 등록되어 있지 않아 인프라 삭제를 중단합니다."
             exit 1
           fi
 
           # hcl 파일에서 주입
           terraform init \
-            -backend-config="bucket=${MY_BUCKET}" \
-            -backend-config="dynamodb_table=${MY_TABLE}" \
+            -backend-config="bucket=${{ secrets.MY_BUCKET }}" \
+            -backend-config="dynamodb_table=${{ secrets.MY_TABLE }}" \
             -backend-config="region=ap-northeast-2"
 
           # 본인 AWS 계정의 인프라만 안전하게 삭제

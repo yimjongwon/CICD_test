@@ -180,14 +180,14 @@ resource "aws_launch_template" "app" {
     dnf update -y
     dnf install -y docker && systemctl enable --now docker
 
-    # 3) Nginx와 app이 서로 통신할 가상 브리지 네트워크 구축
-    # docker network create lockbank-net || true
+    # 3) Nginx와 FastAPI가 서로 통신할 수 있는 도커 내부 가상 네트워크 생성
+    docker network create lb-net || true
 
-    # 4) [App 컨테이너 가동] 이름을 lockbank-app으로 단일화하고 가상망 탑승 및 DB 환경변수 주입
+    # 4) [FastAPI 앱 컨테이너 가동] lb-fastapi
     docker pull ${var.app_image} || true
     docker run -d --restart=always \
-      # --net lockbank-net \
-      --name lockbank-app \
+      --net lb-net \
+      --name fastapi \
       -p 8080:8080 \
       -e DB_HOST_MAIN="${aws_instance.db.private_ip}" \
       -e DB_HOST_REPLICA="${var.db_host_replica}" \
@@ -196,7 +196,17 @@ resource "aws_launch_template" "app" {
       -e DB_NAME="${var.db_name}" \
        ${var.app_image}
 
-    # 5) 익스포터 — ★0.0.0.0 바인딩이어야 100.x로 긁힘 (B 트랙)
+    # 5) [🎯 Nginx 게이트웨이 컨테이너 가동]
+    # ALB가 보내는 호스트의 80 포트를 정면으로 받습니다.
+    # 같은 가상망(--net lb-net)에 태우면, Nginx가 아까 띄운 'http://fastapi:8080'으로 신호를 토스해 줍니다.
+    docker pull yimjongwon/lock-security-nginx:latest || true
+    docker run -d --restart=always \
+      --net lb-net \
+      --name lockbank-nginx \
+      -p 80:80 \
+      yimjongwon/lock-security-nginx:latest
+       
+    # 6) 익스포터 — ★0.0.0.0 바인딩이어야 100.x로 긁힘 (B 트랙)
     docker run -d --restart=always --net=host --name node-exporter \
       quay.io/prometheus/node-exporter
   USERDATA

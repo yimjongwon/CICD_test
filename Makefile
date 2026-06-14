@@ -107,7 +107,7 @@ deploy-db:   ## proj-mgmt에서 DB 컨테이너 배포 (terraform apply 이후)
 build-push:
 	@mkdir -p $(CURDIR)/.docker_config
 	@echo "🚀 1단계: 로컬에서 FastAPI Docker 이미지 빌드 ($(DOCKER_USER)/lock-app:latest)..."
-	docker build -t $(DOCKER_USER)/lock-app:latest ./docker
+	docker build -t $(DOCKER_USER)/lock-app:latest ./docker/app
 	@echo "🚀 Docker Hub에 이미지 푸시..."
 	docker push $(DOCKER_USER)/lock-app:latest
 

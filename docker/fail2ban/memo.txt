@@ -1,0 +1,27 @@
+
+- Docker Compose에서 Nginx 로그를 호스트 경로로 마운트
+volumes:
+  - /var/log/nginx:/var/log/nginx
+
+sudo dnf install -y fail2ban
+sudo cp security/fail2ban/jail.local /etc/fail2ban/jail.local
+sudo cp security/fail2ban/filters/nginx-login.conf /etc/fail2ban/filter.d/nginx-login.conf
+sudo cp security/fail2ban/filters/nginx-rate-limit.conf /etc/fail2ban/filter.d/nginx-rate-limit.conf
+
+sudo systemctl enable --now fail2ban
+sudo systemctl restart fail2ban
+
+상태확인
+sudo fail2ban-client status
+sudo fail2ban-client status nginx-login
+sudo fail2ban-client status nginx-rate-limit
+
+차단 확인
+sudo fail2ban-client status nginx-login
+
+차단 해제
+sudo fail2ban-client set nginx-login unbanip <IP>
+sudo fail2ban-client set nginx-rate-limit unbanip <IP>
+
+sudo fail2ban-regex /var/log/nginx/access.log security/fail2ban/filters/nginx-login.conf
+sudo fail2ban-regex /var/log/nginx/access.log security/fail2ban/filters/nginx-rate-limit.conf

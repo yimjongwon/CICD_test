@@ -1,3 +1,5 @@
+# 파일 위치 : ~/project2-security/docker/app/Dockerfile
+
 # 1. 가벼운 파이썬 공식 이미지 사용
 FROM python:3.11-slim
 
@@ -29,7 +31,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel jaraco.context
 # 4. 패키지 설치
 RUN pip install --no-cache-dir -r requirements.txt
 # 5. 소스 코드 복사
-COPY app/ .
+COPY . .
 # 6. 8080 port 를 사용한다고 명시하기
 EXPOSE 8080
 # 7. FastAPI 실행 (Uvicorn 사용)

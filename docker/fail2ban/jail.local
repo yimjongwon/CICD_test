@@ -1,0 +1,25 @@
+# security/fail2ban/jail.local
+# Nginx JSON Access Log 읽어서 조건 충족 --> IP 차단 로직
+
+# /login 401 반복 --> 로그인 공격으로 판단 --> IP 차단
+# 429 반복 --> Rate Limit 초과 공격으로 판단 --> IP 차단
+
+# 5분 안에 /login 401이 5회 이상 발생하면 1시간 차단
+[nginx-login]
+enabled = true
+filter = nginx-login
+logpath = /var/log/nginx/access.log
+maxretry = 5
+findtime = 300
+bantime = 3600
+action = iptables-multiport[name=nginx-login, port="http,https", protocol=tcp]
+
+# 1분 안에 429가 20회 이상 발생하면 30분 차단
+[nginx-rate-limit]
+enabled = true
+filter = nginx-rate-limit
+logpath = /var/log/nginx/access.log
+maxretry = 20
+findtime = 60
+bantime = 1800
+action = iptables-multiport[name=nginx-rate-limit, port="http,https", protocol=tcp]
