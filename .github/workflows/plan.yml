@@ -43,6 +43,7 @@ jobs:
           TF_VAR_cloudflare_api_token: ${{ secrets.CF_TOKEN }}
           TF_VAR_domain_name: ${{ format('lockbank.{0}', secrets.DOMAIN) }}
           TF_VAR_route53_zone_name: ${{ secrets.DOMAIN }}
+          TF_VAR_app_image: ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest  
         run: |
           # 🚀 [안전장치] GitHub 해당 Environment에 백엔드 설정이 비어있다면 중단합니다.
           if [ -z "${{ secrets.MY_BUCKET }}" ]; then
