@@ -194,6 +194,7 @@ resource "aws_launch_template" "app" {
       -e DB_USER="${var.db_user}" \
       -e DB_PASSWORD="${var.db_password}" \
       -e DB_NAME="${var.db_name}" \
+      -e SECRET_KEY="${var.secret_key}" \
        ${var.app_image}
 
     # 5) [🎯 Nginx 게이트웨이 컨테이너 가동]

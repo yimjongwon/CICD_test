@@ -192,8 +192,7 @@ variable "db_name" {
   default     = "lb_db"
 }
 
-variable "active_color" {
+variable "secret_key" {
+  description = "컨테이너 보안키"
   type        = string
-  default     = "blue" # 기본값은 blue로 지정
-  description = "현재 트래픽을 받고 있는 진짜 대상 그룹 컬러 (blue 또는 green)"
 }

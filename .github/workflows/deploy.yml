@@ -36,6 +36,8 @@ jobs:
           TF_VAR_db_host_replica: ${{ secrets.REPLICA_IP }}
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
           TF_VAR_app_image: ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest      
+           # 컨테이너 보안키
+          TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
         run: |
           # 🚀 [안전장치] GitHub Environment에 백엔드 설정(MY_BUCKET)이 없으면 즉시 차단
           if [ -z "${{ secrets.MY_BUCKET }}" ]; then
