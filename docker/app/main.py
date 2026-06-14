@@ -30,7 +30,7 @@ def get_server_info():
         with urllib.request.urlopen(req2, timeout=1) as response: # nosec B310
             ip = response.read().decode('utf-8')
             return f"IP: {ip}"
-    except:
+    except Exception:
         return f"Host: {socket.gethostname()}"
 # Bandit: requests 라이브러리로 교체
 # def get_server_info():
@@ -167,7 +167,8 @@ def login(request: Request, response: Response, username: str = Form(...), passw
         return redirect
 
     except Exception as e:
-        return RedirectResponse(url=f"/login?error={str(e)}", status_code=302)
+        logger.error(f"Login error: {e}", exc_info=True)
+        return RedirectResponse(url="/login?error=Internal Server Error", status_code=302)
 
 @app.get("/logout")
 def logout():
@@ -204,7 +205,8 @@ def dashboard(request: Request):
             "transactions": transactions
         })
     except Exception as e:
-        return RedirectResponse(url=f"/login?error=Dashboard Error: {str(e)}", status_code=302)
+        logger.error(f"Dashboard error: {e}", exc_info=True)
+        return RedirectResponse(url="/login?error=Dashboard Error occurred", status_code=302)
 
 @app.get("/transfer", response_class=HTMLResponse)
 def transfer_page(request: Request, message: str = None, error: str = None):
@@ -273,8 +275,9 @@ def process_transfer(request: Request, account: str = Form(...), amount: int = F
             
             return RedirectResponse(url="/dashboard", status_code=302)
 
-    except ValueError as e:
-        return RedirectResponse(url=f"/transfer?error={str(e)}", status_code=302)
+    except Exception as e:
+        logger.error(f"Transfer failed: {e}", exc_info=True)
+        return RedirectResponse(url="/transfer?error=Transfer failed due to an internal error", status_code=302)
     except Exception as e:
         return RedirectResponse(url=f"/transfer?error=Transfer failed: {str(e)}", status_code=302)
 
