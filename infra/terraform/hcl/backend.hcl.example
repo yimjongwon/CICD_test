@@ -1,0 +1,5 @@
+# terraform/hcl/backend.hcl.example  (커밋)
+# 이 파일을 backend.hcl 로 복사 후 본인 버킷명 입력:
+#   cp hcl/backend.hcl.example hcl/backend.hcl
+# 본인 버킷명은: cd init && terraform output s3_bucket_name
+bucket = "tfstate-bucket-CHANGEME"

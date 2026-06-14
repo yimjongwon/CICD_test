@@ -1,14 +1,14 @@
-# test01/.github/workflows/deploy.yml
+# cicd_test/.github/workflows/deploy.yml
 
 
 name: "Terraform Apply(수동)"
 on:
   workflow_dispatch: # 수동 실행 버튼
 
-
 jobs:
   deploy:
     runs-on: ubuntu-latest # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
+    environment: ${{ github.actor }}
     permissions:
       contents: read
       issues: write
@@ -24,89 +24,65 @@ jobs:
       # 3. terraform Init & Apply
       - name: Terraform Init and Apply
         working-directory: ./infra/terraform # 폴더 지정
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_KEY }}
+          TF_VAR_admin_ingress_cidr: ${{ secrets.IP }}
+          TF_VAR_tailnet_name: ${{ secrets.TAILNET }}
+          TF_VAR_tailscale_api_key: ${{ secrets.TS_API_KEY }}
+          TF_VAR_cloudflare_api_token: ${{ secrets.CF_TOKEN }}
+          TF_VAR_domain_name: ${{ format('lockbank.{0}', secrets.DOMAIN) }}
+          TF_VAR_route53_zone_name: ${{ secrets.DOMAIN }}
+          TF_VAR_db_host_replica: ${{ secrets.REPLICA_IP }}
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+          TF_VAR_app_image: ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest      
+           # 컨테이너 보안키
+          TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
         run: |
-          # 푸시한 사람(github.actor)에 따라 버킷명과 테이블명, , AWS 키 설정
-          if [ "${{ github.actor }}" = "ShinJunhan" ]; then
-            MY_BUCKET=""
-            MY_TABLE=""
-            export AWS_ACCESS_KEY_ID="${{ secrets.JUNHAN_ACCESS_KEY }}"
-            export AWS_SECRET_ACCESS_KEY="${{ secrets.JUNHAN_SECRET_KEY }}"
-          elif [ "${{ github.actor }}" = "KTCLIF" ]; then
-            MY_BUCKET=""
-            MY_TABLE=""
-            export AWS_ACCESS_KEY_ID="${{ secrets.KTCLIF_ACCESS_KEY }}"
-            export AWS_SECRET_ACCESS_KEY="${{ secrets.KTCLIF_SECRET_KEY }}"
-          elif [ "${{ github.actor }}" = "tkddn3901" ]; then
-            MY_BUCKET=""
-            MY_TABLE=""
-            export AWS_ACCESS_KEY_ID="${{ secrets.SANGWOO_ACCESS_KEY }}"
-            export AWS_SECRET_ACCESS_KEY="${{ secrets.SANGWOO_SECRET_KEY }}"
-          elif [ "${{ github.actor }}" = "yimjongwon" ]; then
-            MY_BUCKET="tfstate-bucket-24a36553"
-            MY_TABLE="DynamoDB-terraform-lock"
-            export AWS_ACCESS_KEY_ID="${{ secrets.JONGWON_ACCESS_KEY }}"
-            export AWS_SECRET_ACCESS_KEY="${{ secrets.JONGWON_SECRET_KEY }}"   
-          elif [ "${{ github.actor }}" = "zeoxixx" ]; then
-            MY_BUCKET=""
-            MY_TABLE=""
-            export AWS_ACCESS_KEY_ID="${{ secrets.ZEOXIXX_ACCESS_KEY }}"
-            export AWS_SECRET_ACCESS_KEY="${{ secrets.ZEOXIXX_SECRET_KEY }}"
+          # 🚀 [안전장치] GitHub Environment에 백엔드 설정(MY_BUCKET)이 없으면 즉시 차단
+          if [ -z "${{ secrets.MY_BUCKET }}" ]; then
+            echo "❌ 해당 개발자(${{ github.actor }})의 S3 Backend(MY_BUCKET) 설정이 GitHub Environment에 등록되어 있지 않아 배포를 중단합니다."
+            exit 1
           fi
 
-          # 테라폼 초기화
+          # 테라폼 초기화 (현재 로그인한 팀원의 버킷과 테이블 주입)
           terraform init \
-            -backend-config="bucket=${MY_BUCKET}" \
-            -backend-config="dynamodb_table=${MY_TABLE}" \
+            -backend-config="bucket=${{ secrets.MY_BUCKET }}" \
+            -backend-config="dynamodb_table=${{ secrets.MY_TABLE }}" \
             -backend-config="region=ap-northeast-2"
 
-          # Terraform Apply (버튼눌렀을때만)
-          echo "수동 실행 감지: 배포(apply)를 시작합니다."
+          # 인프라 배포 및 Blue/Green ASG 가동
+          echo "수동 배포(apply)를 시작합니다."
           terraform apply --auto-approve
-       
-          # ⚡ 테라폼이 뱉어낸 최신 퍼블릭 IP를 깃허브 액션 메모리에 'APP_IP'라는 이름으로 저장합니다.
-          echo "APP_IP=$(terraform output -raw app_public_ip)" >> $GITHUB_ENV
 
-      # 앤서블 실행 직전에 가상 컴퓨터(러너)에 파일을 실시간으로 구워냄!
-      - name: Create Temporary init.sql from Secret
-        run: |
-          #  $GITHUB_WORKSPACE: 프로젝트 최상위 루트 절대 경로
-          mkdir -p $GITHUB_WORKSPACE/docker
-
-          cat << 'EOF' > $GITHUB_WORKSPACE/docker/init.sql
-          ${{ secrets.INIT_SQL_CONTENT }}
-          EOF
+          # [핵심 변환 로직] 도메인이 정상 출력되었는지 판단 후 OWASP ZAP용 타겟 URL 생성
+          SVC_DOMAIN=$(terraform output -raw service_domain)
           
-      # --------------------------------------------------
-      # 4. ansible 용 key setting (lb-key.pem)
-      # --------------------------------------------------
-      - name: setup ssh key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/lb-key.pem
-          chmod 600 ~/.ssh/lb-key.pem
-      
-      # 5. ansible playbook 실행 
-      # 앤서블이 실서버에 접속해서 "방금 푸시한 도커 이미지 다운받아서 실행해!" 라고 명령하게 됩니다.
-      - name: run ansible playbook
-        working-directory: ./infra/ansible # 폴더 지정
-        run: |
-          # 1. DB 서버 세팅 및 컨테이너 구동
-          ansible-playbook -i hosts deploy_db.yml --private-key=~/.ssh/lb-key.pem
-          # 2. App(FastAPI) 서버 세팅 및 컨테이너 구동
-          ansible-playbook -i hosts deploy_app.yml --private-key=~/.ssh/lb-key.pem
+          if [ "$SVC_DOMAIN" = "N/A (HTTP only)" ] || [ -z "$SVC_DOMAIN" ]; then
+            # HTTPS 도메인이 설정되지 않았다면 ALB의 순수 DNS 주소(HTTP)를 타겟으로 삼음
+            ALB_DNS=$(terraform output -raw alb_dns_name)
+            CURRENT_APP_URL="http://${ALB_DNS}"
+          else
+            # 도메인이 정상 작동 중이라면 해당 도메인 주소(HTTPS)를 타겟으로 삼음
+            CURRENT_APP_URL="https://${SVC_DOMAIN}"
+          fi
 
+          # 1) 다음 스텝(OWASP ZAP)을 위해 파일에 환경변수 저장
+          echo "APP_URL=${CURRENT_APP_URL}" >> $GITHUB_ENV
+
+          # 제대로 담겼는지 깃허브 액션 콘솔에서 확인하기 위한 한 줄
+          echo "🎯 타겟 APP_URL이 설정되었습니다: ${CURRENT_APP_URL}"
 
       # ==========================================
       # 🎯 [보안 최종단계] DAST: OWASP ZAP (동적 모의 해킹)
       # ==========================================
       # 앤서블이 서버를 무사히 가동했으므로, 살아있는 URL을 향해 공격을 찌릅니다.
       - name: Run OWASP ZAP Baseline Scan
-      # 변경: 깃허브 API 변경점이 반영된 최신 안정 버전으로 교체합니다.
+      # 깃허브 API 변경점이 반영된 최신 안정 버전으로 교체합니다.
         uses: zaproxy/action-baseline@v0.14.0
         with:
-          # 💡 [필독] AWS 로드밸런서(ALB) DNS 주소나 연동된 도메인 주소를 적어주세요!
-          # 예: 'http://my-load-balancer-1234.ap-northeast-2.elb.amazonaws.com'
-          target: 'http://${{ env.APP_IP }}:80'
+          # AWS 로드밸런서(ALB) DNS 주소나 연동된 도메인 주소
+          target: ${{ env.APP_URL }}
           
           # 만약 특정 취약점이 나왔을 때 파이프라인을 실패(레드카드)로 만들고 싶다면 true로 둡니다.
           # 처음 테스트할 때는 어떤 결과가 나오는지 보기 위해 false로 두고 관측해도 좋습니다.

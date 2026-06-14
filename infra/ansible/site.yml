@@ -1,0 +1,36 @@
+# infra/ansible/site.yml
+- name: DB 서버 구성 (PostgreSQL + 백업)
+  hosts: database
+  become: true
+  vars:
+    pg_image: postgres:15
+    app_dir: /opt/lockbank
+  tasks:
+    - name: 작업 디렉토리 생성
+      ansible.builtin.file:
+        path: "{{ app_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: DB 전용 compose 배치
+      ansible.builtin.template:
+        src: templates/docker-compose.db.yml.j2
+        dest: "{{ app_dir }}/docker-compose.yml"
+        mode: "0644"
+
+    - name: postgres 기동
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_dir }}"
+        state: present
+
+    - name: aws-cli 설치 (백업용)
+      ansible.builtin.dnf:
+        name: awscli
+        state: present
+
+    - name: S3 백업 cron (instance profile라 키 불필요)
+      ansible.builtin.cron:
+        name: pg_dump_to_s3
+        minute: "0"
+        hour: "3"
+        job: "docker exec -e PGPASSWORD='{{ db_password }}' lockbank-db pg_dump -U postgres lockbank | gzip | aws s3 cp - s3://{{ db_backup_bucket }}/pg_$(date +\\%F).sql.gz"

@@ -1,0 +1,42 @@
+version: '3.8'
+
+networks:
+  lb-net-main:
+volumes:
+  pgdata_main:
+
+services:
+  lb_database_main:
+    image: postgres:15
+    container_name: lb-postgres-main
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: lb-user
+      POSTGRES_PASSWORD: lb-user
+      POSTGRES_DB: lb-db
+    volumes:
+      - pgdata_main:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/10-init.sql
+      - ./init-replication.sh:/docker-entrypoint-initdb.d/20-init-replication.sh
+    networks:
+      - lb-net-main
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    container_name: lb-db-node-exporter
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    command:
+      - --path.rootfs=/host
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: lb-db-postgres-exporter
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      DATA_SOURCE_NAME: "postgresql://lb-user:lb-user@localhost:5432/lb-db?sslmode=disable"

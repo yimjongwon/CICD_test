@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>LockBank Dashboard</title>
+
+    <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+
+        body {
+
+            margin: 0;
+
+            font-family: Arial, sans-serif;
+
+            background: #f4f7fb;
+        }
+
+        .navbar {
+
+            height: 70px;
+
+            background: white;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            padding: 0 40px;
+
+            box-shadow:
+                0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .logo {
+
+            font-size: 24px;
+            font-weight: bold;
+
+            color: #1d4ed8;
+        }
+
+        .container {
+
+            max-width: 1100px;
+
+            margin: 40px auto;
+
+            padding: 20px;
+        }
+
+        .welcome {
+
+            font-size: 28px;
+            font-weight: bold;
+
+            margin-bottom: 30px;
+
+            color: #111827;
+        }
+
+        .card-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(auto-fit, minmax(300px, 1fr));
+
+            gap: 20px;
+        }
+
+        .card {
+
+            background: white;
+
+            border-radius: 18px;
+
+            padding: 30px;
+
+            box-shadow:
+                0 4px 20px rgba(0,0,0,0.06);
+        }
+
+        .card-title {
+
+            color: #6b7280;
+
+            margin-bottom: 15px;
+        }
+
+        .balance {
+
+            font-size: 36px;
+            font-weight: bold;
+
+            color: #111827;
+        }
+
+        .transfer-btn {
+
+            margin-top: 20px;
+
+            width: 100%;
+
+            padding: 14px;
+
+            border: none;
+
+            border-radius: 12px;
+
+            background: #1d4ed8;
+
+            color: white;
+
+            font-size: 15px;
+            font-weight: bold;
+
+            cursor: pointer;
+        }
+
+        .transfer-btn:hover {
+
+            background: #1e40af;
+        }
+
+        .transaction {
+
+            display: flex;
+            justify-content: space-between;
+
+            padding: 12px 0;
+
+            border-bottom:
+                1px solid #e5e7eb;
+        }
+
+        .status {
+            color: #16a34a;
+            font-weight: bold;
+        }
+
+        .server-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            font-size: 12px;
+            color: #6b7280;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 4px 8px;
+            border-radius: 4px;
+            z-index: 1000;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="server-info">
+    <i class="fa-solid fa-server"></i> {{ server_info }}
+</div>
+
+<div class="navbar">
+
+    <div class="logo">
+        <i class="fa-solid fa-globe"></i>
+        LockBank
+    </div>
+
+    <div>
+        {{ username }} <a href="/logout" style="margin-left: 10px; color: #1d4ed8; text-decoration: none;">(Logout)</a>
+    </div>
+
+</div>
+
+<div class="container">
+
+    <div class="welcome">
+        Welcome back.
+    </div>
+
+    <div class="card-grid">
+
+        <div class="card">
+
+            <div class="card-title">
+                Account Balance
+            </div>
+
+            <div class="balance">
+                ₩{{ balance }}
+            </div>
+
+            <a href="/transfer">
+                <button class="transfer-btn">
+                    Transfer Money
+                </button>
+            </a>
+
+        </div>
+
+        <div class="card">
+
+            <div class="card-title">
+                Recent Transactions
+            </div>
+
+            {% for txn in transactions %}
+            <div class="transaction">
+                <span>{{ txn.title }}</span>
+                {% if txn.amount < 0 %}
+                <span style="color: #dc2626; font-weight: bold;">
+                    ₩{{ "{:,}".format(txn.amount) }}
+                </span>
+                {% else %}
+                <span style="color: #16a34a; font-weight: bold;">
+                    +₩{{ "{:,}".format(txn.amount) }}
+                </span>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="transaction">
+                <span>No recent transactions.</span>
+            </div>
+            {% endfor %}
+
+        </div>
+
+        <div class="card">
+
+            <div class="card-title">
+                Security Status
+            </div>
+
+            <p class="status">
+                Normal
+            </p>
+
+            <p>
+                No suspicious activity detected.
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

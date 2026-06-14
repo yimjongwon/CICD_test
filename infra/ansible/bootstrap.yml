@@ -1,0 +1,48 @@
+---
+- name: "AWS EC2 인스턴스 초기 셋팅 (ec2-user)"
+  hosts: bastion, lb-postgres-main
+  remote_user: ec2-user
+  vars:
+    ansible_ssh_private_key_file: "{{ playbook_dir }}/../terraform/lb-key.pem"
+  become: true
+  gather_facts: false   # wait_for_connection 이전에 facts 수집 시도하지 않음
+
+  tasks:
+    - name: "SSH 연결 대기 (Tailscale join 완료까지 최대 5분)"
+      ansible.builtin.wait_for_connection:
+        connect_timeout: 10   # 1회 연결 시도 타임아웃(초)
+        delay: 5              # 첫 시도 전 대기(초)
+        sleep: 5              # 재시도 간격(초)
+        timeout: 300          # 전체 최대 대기 시간(초)
+
+    - name: "Facts 수집 (SSH 연결 확인 후)"
+      ansible.builtin.setup:
+
+    - name: "user1 계정 셋업 및 권한 부여"
+      ansible.builtin.include_tasks: tasks/setup_user1.yml
+      vars:
+        user1_pub_key: "{{ lookup('pipe', 'ssh-keygen -y -f ' + playbook_dir + '/../terraform/lb-key.pem') }}"
+
+- name: "온프레미스 Replica 인스턴스 초기 셋팅 (root)"
+  hosts: lb-postgres-replica
+  remote_user: root
+  vars:
+    ansible_ssh_private_key_file: "{{ playbook_dir }}/../terraform/lb-key.pem"
+  become: true
+  gather_facts: false   # wait_for_connection 이전에 facts 수집 시도하지 않음
+
+  tasks:
+    - name: "SSH 연결 대기 (최대 2분)"
+      ansible.builtin.wait_for_connection:
+        connect_timeout: 10
+        delay: 3
+        sleep: 5
+        timeout: 120
+
+    - name: "Facts 수집 (SSH 연결 확인 후)"
+      ansible.builtin.setup:
+
+    - name: "user1 계정 셋업 및 권한 부여"
+      ansible.builtin.include_tasks: tasks/setup_user1.yml
+      vars:
+        user1_pub_key: "{{ lookup('pipe', 'ssh-keygen -y -f ' + playbook_dir + '/../terraform/lb-key.pem') }}"

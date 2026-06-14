@@ -1,0 +1,149 @@
+name: "Terraform Plan & Docker 빌드"
+on:
+  push: # 자동 push
+    branches: ["main", "dev"]
+
+jobs:
+  deploy-plan:
+    runs-on: ubuntu-latest # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
+    steps:
+      # 1. 소스코드 체크아웃
+      - name: Checkout Source Code
+        uses: actions/checkout@v5
+      
+      # 관련 애플리케이션 및 빌드 파일 변경 사항 정밀 감지
+      - name: Check for Application and Docker changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          base: ${{ github.event.before }}
+          filters: |
+            docker_updated:
+              - 'docker/Dockerfile'           # 도커 빌드 메커니즘 변경 시
+              - 'docker-compose.yml'          # 컨테이너 구성 변경 시
+              - 'docker/requirements.txt'     # 파이썬 패키지 의존성 변경 시
+              - 'docker/app/**/*.py'          # 오직 파이썬 실행 코드(.py)가 바뀔 때만 감지!
+              - '!docker/app/**/*.md'         # ❌ 앱 폴더 내 설명서(.md) 변경은 무시!
+              - '!docker/app/**/README*'      # ❌ README 파일 변경도 무시!
+
+      # 2. terraform 환경 구성
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+     
+      # 3. init & plan 실행 (배포 X, 안전한 테스트 단계)
+      - name: Terraform Init and Plan
+        working-directory: ./infra/terraform
+        run: |
+          if [ "${{ github.actor }}" = "ShinJunhan" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.JUNHAN_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.JUNHAN_SECRET_KEY }}"
+            export TF_VAR_admin_ingress_cidr="${{ secrets.JUNHAN_IP }}"
+            export TF_VAR_tailnet_name="${{ secrets.JUNHAN_TAILNET }}"
+            export TF_VAR_tailscale_api_key="${{ secrets.JUNHAN_TS_API_KEY }}"
+            export TF_VAR_cloudflare_api_token="${{ secrets.JUNHAN_CF_TOKEN }}"
+          
+          elif [ "${{ github.actor }}" = "KTCLIF" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.KTCLIF_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.KTCLIF_SECRET_KEY }}"
+            export TF_VAR_admin_ingress_cidr="${{ secrets.KTCLIF_IP }}"
+            export TF_VAR_tailnet_name="${{ secrets.KTCLIF_TAILNET }}"
+            export TF_VAR_tailscale_api_key="${{ secrets.KTCLIF_TS_API_KEY }}"
+            export TF_VAR_cloudflare_api_token="${{ secrets.KTCLIF_CF_TOKEN }}"
+          
+          elif [ "${{ github.actor }}" = "tkddn3901" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.SANGWOO_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.SANGWOO_SECRET_KEY }}"
+            export TF_VAR_admin_ingress_cidr="${{ secrets.SANGWOO_IP }}"
+            export TF_VAR_tailnet_name="${{ secrets.SANGWOO_TAILNET }}"
+            export TF_VAR_tailscale_api_key="${{ secrets.SANGWOO_TS_API_KEY }}"
+            export TF_VAR_cloudflare_api_token="${{ secrets.SANGWOO_CF_TOKEN }}"
+          
+          elif [ "${{ github.actor }}" = "yimjongwon" ]; then
+            MY_BUCKET="tfstate-bucket-24a36553"
+            MY_TABLE="DynamoDB-terraform-lock"
+            export AWS_ACCESS_KEY_ID="${{ secrets.JONGWON_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.JONGWON_SECRET_KEY }}"   
+            export TF_VAR_admin_ingress_cidr="${{ secrets.JONGWON_IP }}"
+            export TF_VAR_tailnet_name="${{ secrets.JONGWON_TAILNET }}"
+            export TF_VAR_tailscale_api_key="${{ secrets.JONGWON_TS_API_KEY }}"
+            export TF_VAR_cloudflare_api_token="${{ secrets.JONGWON_CF_TOKEN }}"
+          
+          elif [ "${{ github.actor }}" = "zeoxixx" ]; then
+            MY_BUCKET=""
+            MY_TABLE=""
+            export AWS_ACCESS_KEY_ID="${{ secrets.ZEOXIXX_ACCESS_KEY }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.ZEOXIXX_SECRET_KEY }}"
+            export TF_VAR_admin_ingress_cidr="${{ secrets.ZEOXIXX_IP }}"
+            export TF_VAR_tailnet_name="${{ secrets.ZEOXIXX_TAILNET }}"
+            export TF_VAR_tailscale_api_key="${{ secrets.ZEOXIXX_TS_API_KEY }}"
+            export TF_VAR_cloudflare_api_token="${{ secrets.ZEOXIXX_CF_TOKEN }}"
+          fi
+
+          # 테라폼 초기화 및 플랜 
+          terraform init \
+            -backend-config="bucket=${MY_BUCKET}" \
+            -backend-config="dynamodb_table=${MY_TABLE}" \
+            -backend-config="region=ap-northeast-2"
+          terraform plan
+
+      # 4. 도커 허브 로그인 (변화가 있을 때만)
+      - name: Login to Docker Hub
+        if: steps.changes.outputs.docker_updated == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # ==========================================
+      # [보안 1단계] SAST: Bandit (Python 코드 검사)
+      # ==========================================
+      - name: Run Bandit (SAST)
+        if: steps.changes.outputs.docker_updated == 'true'
+        working-directory: ./docker
+        run: |
+          pip install bandit
+          bandit -r ./app -l
+
+      # ==========================================
+      # 5. 도커 이미지 빌드 (변화가 있을 때만) - 📌 hub-app -> lock-app 변경
+      # ==========================================
+      - name: Build Docker Image
+        if: steps.changes.outputs.docker_updated == 'true'
+        working-directory: ./docker
+        run: |
+          # 내 도커허브 계정명/이미지명:태그 형태로 빌드합니다.
+          docker build \
+          --build-arg GITHUB_ACTOR="${{ github.actor }}" \
+          -t ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }} .
+
+          # 방금 만든 숫자가 붙은 이미지를 기반으로 'latest' 이름표 하나 더 붙여주기
+          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }} \
+          ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest
+
+      # ==========================================
+      # [보안 2단계] Container Scan: Trivy (이미지 검사) - 📌 hub-app -> lock-app 변경
+      # ==========================================
+      - name: Run Trivy vulnerability scanner
+        if: steps.changes.outputs.docker_updated == 'true'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }}'
+          format: 'table'
+          exit-code: '1' # CRITICAL, HIGH 취약점 발견 시 빌드를 실패 처리하고 배포 차단
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+      # ==========================================
+      # 6. 모든 보안 검증이 완벽히 완료된 후에만 이미지 최종 푸시 - 📌 hub-app -> lock-app 변경
+      # ==========================================
+      - name: Push Docker Image
+        if: steps.changes.outputs.docker_updated == 'true'
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest
