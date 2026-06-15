@@ -196,9 +196,3 @@ variable "secret_key" {
   description = "컨테이너 보안키"
   type        = string
 }
-
-variable "deploy_version" {
-  type        = string
-  default     = "latest"
-  description = "GitHub Actions 수동 배포 시 변경 감지를 강제하기 위한 고유 ID 변수"
-}

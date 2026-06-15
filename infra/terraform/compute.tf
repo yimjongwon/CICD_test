@@ -153,11 +153,10 @@ resource "aws_launch_template" "app" {
 
   vpc_security_group_ids = [aws_security_group.app_sg.id]
 
-  # 배포 버전 트리거: ${var.deploy_version}
-
   # 최소 부트스트랩(Docker). 앱 배포는 B/C 트랙이 Ansible/Actions 로 수행.
   user_data = base64encode(<<-USERDATA
     #!/bin/bash
+    # Deployment Trigger: ${timestamp()}
     set -uxo pipefail
     # 로그 파일 생성 및 모든 출력 기록
     exec > >(tee -a /var/log/user_data_app.log) 2>&1
@@ -186,8 +185,6 @@ resource "aws_launch_template" "app" {
     docker network create lb-net || true
 
     # 4) [FastAPI 앱 컨테이너 가동] lb-fastapi
-    docker rm -f fastapi || true
-
     docker pull ${var.app_image} || true
     docker run -d --restart=always \
       --net lb-net \
@@ -204,8 +201,6 @@ resource "aws_launch_template" "app" {
     # 5) [🎯 Nginx 게이트웨이 컨테이너 가동]
     # ALB가 보내는 호스트의 80 포트를 정면으로 받습니다.
     # 같은 가상망(--net lb-net)에 태우면, Nginx가 아까 띄운 'http://fastapi:8080'으로 신호를 토스해 줍니다.
-    docker rm -f lockbank-nginx || true
-    
     docker pull yimjongwon/lock-security-nginx:latest || true
     docker run -d --restart=always \
       --net lb-net \
@@ -246,11 +241,12 @@ resource "aws_autoscaling_group" "blue" {
   }
 
   instance_refresh {
-    strategy = "Rolling"
+    strategy = "Rolling" # 새 서버를 먼저 띄우고 옛날 서버를 내리는 방식 (무중단)
     preferences {
-      min_healthy_percentage = 50 # 배포 중에도 최소 50%의 서버는 살아있도록 유지 (무중단)
+      min_healthy_percentage = 100 # 배포 중에도 서비스 중인 기존 서버 개수를 그대로 유지
+      instance_warmup        = 90  # 새 서버의 Nginx/FastAPI 컨테이너가 켜질 때까지 기다려주는 시간
     }
-    triggers = ["launch_template"]
+    triggers = ["launch_template"] # 런칭 템플릿(이미지/유저데이터)이 바뀌면 즉시 새 서버 생성 작동
   }
 
   tag {
