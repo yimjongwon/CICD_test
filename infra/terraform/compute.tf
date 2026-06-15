@@ -159,6 +159,9 @@ resource "aws_launch_template" "app" {
     set -uxo pipefail
     # 로그 파일 생성 및 모든 출력 기록
     exec > >(tee -a /var/log/user_data_app.log) 2>&1
+    # 배포 트리거
+    export DEPLOY_TRIGGER="${var.deploy_trigger}"
+    echo "🚀 배포 트리거 작동 중: $DEPLOY_TRIGGER"
 
     # 1) Tailscale 노드 가입 (node-to-node, accept-routes=false)
     #    네트워크 egress 준비될 때까지 설치 재시도 + IMDSv2 토큰 재시도 (early-boot 안전)
@@ -239,6 +242,14 @@ resource "aws_autoscaling_group" "blue" {
     version = "$Latest"
   }
 
+  instance_refresh {
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 50 
+    }
+    triggers = ["launch_template"] # 템플릿 버전이 오르면 바로 리프레시 작동
+  }
+
   tag {
     key                 = "Color"
     value               = "blue"
@@ -261,6 +272,14 @@ resource "aws_autoscaling_group" "green" {
   launch_template {
     id      = aws_launch_template.app.id
     version = "$Latest"
+  }
+
+  instance_refresh {
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 50  
+    }
+    triggers = ["launch_template"] 
   }
 
   tag {

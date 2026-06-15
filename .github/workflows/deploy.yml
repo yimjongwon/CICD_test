@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
+    runs-on: self-hosted # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
     environment: ${{ github.actor }}
     permissions:
       contents: read
@@ -38,6 +38,7 @@ jobs:
           TF_VAR_app_image: ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest      
            # 컨테이너 보안키
           TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
+          TF_VAR_deploy_trigger: ${{ github.run_id }}-${{ github.run_attempts }}
         run: |
           # 🚀 [안전장치] GitHub Environment에 백엔드 설정(MY_BUCKET)이 없으면 즉시 차단
           if [ -z "${{ secrets.MY_BUCKET }}" ]; then
