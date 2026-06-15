@@ -245,7 +245,7 @@ resource "aws_autoscaling_group" "blue" {
     preferences {
       min_healthy_percentage = 50 # 배포 중 최소 50%의 인스턴스는 살아있도록 유지
     }
-    triggers = ["launch_template_version"] # 론치 템플릿 변경 시 새로고침 트리거
+    triggers = ["launch_template"] # 론치 템플릿 변경 시 새로고침 트리거
   }
 
   tag {
