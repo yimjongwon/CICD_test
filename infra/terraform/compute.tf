@@ -239,6 +239,15 @@ resource "aws_autoscaling_group" "blue" {
     version = "$Latest"
   }
 
+  # 🚀 [추가] 론치 템플릿이 변경되면 기존 인스턴스들을 새 버전으로 자동 교체해주는 옵션
+  instance_refresh {
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 50 # 배포 중 최소 50%의 인스턴스는 살아있도록 유지
+    }
+    triggers = ["launch_template"] # 론치 템플릿 변경 시 새로고침 트리거
+  }
+
   tag {
     key                 = "Color"
     value               = "blue"
