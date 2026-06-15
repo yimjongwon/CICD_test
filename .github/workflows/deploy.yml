@@ -4,7 +4,11 @@
 name: "Terraform Apply(수동)"
 on:
   workflow_dispatch: # 수동 실행 버튼
-
+    inputs:
+      build_number:
+        description: '배포할 도커 이미지의 빌드 번호 (예: 12)'
+        required: true
+        default: 'latest' # 기본값은 최신으로 두되, 가급적 숫자를 입력하도록 유도
 jobs:
   deploy:
     runs-on: ubuntu-latest # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
@@ -35,7 +39,7 @@ jobs:
           TF_VAR_route53_zone_name: ${{ secrets.DOMAIN }}
           TF_VAR_db_host_replica: ${{ secrets.REPLICA_IP }}
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
-          TF_VAR_app_image: ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest      
+          TF_VAR_app_image: ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.event.inputs.build_number }}  
            # 컨테이너 보안키
           TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
         run: |
@@ -54,17 +58,6 @@ jobs:
           # 인프라 배포 및 Blue/Green ASG 가동
           echo "수동 배포(apply)를 시작합니다."
           terraform apply --auto-approve
-
-          - name: Force AWS ASG Instance Refresh
-            env:
-              AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY }}
-              AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_KEY }}
-              AWS_DEFAULT_REGION: ap-northeast-2
-            run: |
-              echo "🚀 테라폼과 별개로 AWS ASG에 서버 강제 교체 명령을 내립니다."
-              aws autoscaling start-instance-refresh \
-                --auto-scaling-group-name "lb-asg-blue" \
-                --preferences "MinHealthyPercentage=100,InstanceWarmup=90"
 
           # [핵심 변환 로직] 도메인이 정상 출력되었는지 판단 후 OWASP ZAP용 타겟 URL 생성
           SVC_DOMAIN=$(terraform output -raw service_domain)
