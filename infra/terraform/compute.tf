@@ -153,6 +153,8 @@ resource "aws_launch_template" "app" {
 
   vpc_security_group_ids = [aws_security_group.app_sg.id]
 
+  # 배포 버전 트리거: ${var.deploy_version}
+
   # 최소 부트스트랩(Docker). 앱 배포는 B/C 트랙이 Ansible/Actions 로 수행.
   user_data = base64encode(<<-USERDATA
     #!/bin/bash
@@ -184,6 +186,8 @@ resource "aws_launch_template" "app" {
     docker network create lb-net || true
 
     # 4) [FastAPI 앱 컨테이너 가동] lb-fastapi
+    docker rm -f fastapi || true
+
     docker pull ${var.app_image} || true
     docker run -d --restart=always \
       --net lb-net \
@@ -200,6 +204,8 @@ resource "aws_launch_template" "app" {
     # 5) [🎯 Nginx 게이트웨이 컨테이너 가동]
     # ALB가 보내는 호스트의 80 포트를 정면으로 받습니다.
     # 같은 가상망(--net lb-net)에 태우면, Nginx가 아까 띄운 'http://fastapi:8080'으로 신호를 토스해 줍니다.
+    docker rm -f lockbank-nginx || true
+    
     docker pull yimjongwon/lock-security-nginx:latest || true
     docker run -d --restart=always \
       --net lb-net \
@@ -237,6 +243,14 @@ resource "aws_autoscaling_group" "blue" {
   launch_template {
     id      = aws_launch_template.app.id
     version = "$Latest"
+  }
+
+  instance_refresh {
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 50 # 배포 중에도 최소 50%의 서버는 살아있도록 유지 (무중단)
+    }
+    triggers = ["launch_template"]
   }
 
   tag {
