@@ -35,7 +35,7 @@ jobs:
           TF_VAR_route53_zone_name: ${{ secrets.DOMAIN }}
           TF_VAR_db_host_replica: ${{ secrets.REPLICA_IP }}
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
-          TF_VAR_app_image: ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest      
+          TF_VAR_app_image: ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }}     
            # 컨테이너 보안키
           TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
         run: |
