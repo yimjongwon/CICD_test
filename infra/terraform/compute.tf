@@ -156,6 +156,7 @@ resource "aws_launch_template" "app" {
   # 최소 부트스트랩(Docker). 앱 배포는 B/C 트랙이 Ansible/Actions 로 수행.
   user_data = base64encode(<<-USERDATA
     #!/bin/bash
+    # 🌟 배포 버전: ${var.deploy_version}
     set -uxo pipefail
     # 로그 파일 생성 및 모든 출력 기록
     exec > >(tee -a /var/log/user_data_app.log) 2>&1
