@@ -37,3 +37,6 @@ tailscale_api_key = "tskey-api-your-api-key-here" # # ◀ 여기에 ~/.tailscale
 asg_min     = 0
 asg_desired = 0
 # (green ASG는 이미 코드에서 min=0/desired=0 → 그대로)
+
+# terraform.tfvars에 추가할것!!!
+# secret_key = "aws액세스키랑동일"
