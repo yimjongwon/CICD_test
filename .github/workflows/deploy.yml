@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
+    runs-on: [self-hosted, "${{ github.actor }}"] # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
     environment: ${{ github.actor }}
     permissions:
       contents: read
