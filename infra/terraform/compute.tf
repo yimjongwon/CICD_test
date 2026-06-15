@@ -156,7 +156,7 @@ resource "aws_launch_template" "app" {
   # 최소 부트스트랩(Docker). 앱 배포는 B/C 트랙이 Ansible/Actions 로 수행.
   user_data = base64encode(<<-USERDATA
     #!/bin/bash
-    # Deployment Trigger: ${timestamp()}
+    # GitHub Commit SHA: ${var.deploy_trigger}
     set -uxo pipefail
     # 로그 파일 생성 및 모든 출력 기록
     exec > >(tee -a /var/log/user_data_app.log) 2>&1
@@ -238,15 +238,6 @@ resource "aws_autoscaling_group" "blue" {
   launch_template {
     id      = aws_launch_template.app.id
     version = "$Latest"
-  }
-
-  instance_refresh {
-    strategy = "Rolling" # 새 서버를 먼저 띄우고 옛날 서버를 내리는 방식 (무중단)
-    preferences {
-      min_healthy_percentage = 100 # 배포 중에도 서비스 중인 기존 서버 개수를 그대로 유지
-      instance_warmup        = 90  # 새 서버의 Nginx/FastAPI 컨테이너가 켜질 때까지 기다려주는 시간
-    }
-    triggers = ["launch_template"] # 런칭 템플릿(이미지/유저데이터)이 바뀌면 즉시 새 서버 생성 작동
   }
 
   tag {
