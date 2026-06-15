@@ -196,9 +196,3 @@ variable "secret_key" {
   description = "컨테이너 보안키"
   type        = string
 }
-
-variable "deploy_trigger" {
-  type        = string
-  default     = "initial"
-  description = "latest 태그 사용 시 ASG 새 서버 생성을 강제하기 위한 트리거 변수"
-}

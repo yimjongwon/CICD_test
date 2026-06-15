@@ -38,7 +38,6 @@ jobs:
           TF_VAR_app_image: ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest      
            # 컨테이너 보안키
           TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
-          TF_VAR_deploy_trigger: ${{ github.sha }}
         run: |
           # 🚀 [안전장치] GitHub Environment에 백엔드 설정(MY_BUCKET)이 없으면 즉시 차단
           if [ -z "${{ secrets.MY_BUCKET }}" ]; then
@@ -55,6 +54,17 @@ jobs:
           # 인프라 배포 및 Blue/Green ASG 가동
           echo "수동 배포(apply)를 시작합니다."
           terraform apply --auto-approve
+
+          - name: Force AWS ASG Instance Refresh
+            env:
+              AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY }}
+              AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_KEY }}
+              AWS_DEFAULT_REGION: ap-northeast-2
+            run: |
+              echo "🚀 테라폼과 별개로 AWS ASG에 서버 강제 교체 명령을 내립니다."
+              aws autoscaling start-instance-refresh \
+                --auto-scaling-group-name "lb-asg-blue" \
+                --preferences "MinHealthyPercentage=100,InstanceWarmup=90"
 
           # [핵심 변환 로직] 도메인이 정상 출력되었는지 판단 후 OWASP ZAP용 타겟 URL 생성
           SVC_DOMAIN=$(terraform output -raw service_domain)
