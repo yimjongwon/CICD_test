@@ -79,7 +79,7 @@ jobs:
         working-directory: ./docker
         run: |
           pip3 install bandit
-          python3 -m bandit -r ./app -l
+          ~/.local/bin/bandit -r ./app -l
 
       # ==========================================
       # 5. 도커 이미지 빌드 (변화가 있을 때만)
