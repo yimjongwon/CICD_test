@@ -189,7 +189,6 @@ resource "aws_launch_template" "app" {
       --net lb-net \
       --name fastapi \
       -p 8080:8080 \
-      -e DEPLOY_TRIGGER="${var.deploy_trigger}" \
       -e DB_HOST_MAIN="${aws_instance.db.private_ip}" \
       -e DB_HOST_REPLICA="${var.db_host_replica}" \
       -e DB_USER="${var.db_user}" \
@@ -240,13 +239,6 @@ resource "aws_autoscaling_group" "blue" {
     version = "$Latest"
   }
 
-  instance_refresh {
-    strategy = "Rolling"
-    preferences {
-      min_healthy_percentage = 50
-    }
-  }
-
   tag {
     key                 = "Color"
     value               = "blue"
@@ -269,13 +261,6 @@ resource "aws_autoscaling_group" "green" {
   launch_template {
     id      = aws_launch_template.app.id
     version = "$Latest"
-  }
-
-  instance_refresh {
-    strategy = "Rolling"
-    preferences {
-      min_healthy_percentage = 50
-    }
   }
 
   tag {
