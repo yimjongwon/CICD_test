@@ -278,8 +278,6 @@ def process_transfer(request: Request, account: str = Form(...), amount: int = F
     except Exception as e:
         logger.error(f"Transfer failed: {e}", exc_info=True)
         return RedirectResponse(url="/transfer?error=Transfer failed due to an internal error", status_code=302)
-    except Exception as e:
-        return RedirectResponse(url=f"/transfer?error=Transfer failed: {str(e)}", status_code=302)
 
 @app.get("/health")
 def health_check():
