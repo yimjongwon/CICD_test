@@ -63,7 +63,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "lb-user")
 DB_NAME = os.getenv("DB_NAME", "lb-db")
 
 # Session signing secret key
-SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_hex(32))
 SESSION_MAX_AGE = 86400  # 24 hours
 session_serializer = URLSafeTimedSerializer(SECRET_KEY)
 
