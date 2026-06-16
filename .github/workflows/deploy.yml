@@ -92,10 +92,10 @@ jobs:
           sleep 7
 
           # 4) Nginx Upstream 타겟 스위칭 치환 (sed 마법)
-          sudo docker exec lockbank-nginx sed -i "s/server fastapi-$OLD_COLOR:$OLD_PORT;/server fastapi-$TARGET_COLOR:$TARGET_PORT;/g" /etc/nginx/nginx.conf
+          sudo docker exec -u 0 lockbank-nginx sed -i "s/server fastapi-$OLD_COLOR:$OLD_PORT;/server fastapi-$TARGET_COLOR:$TARGET_PORT;/g" /etc/nginx/nginx.conf
 
           # Nginx 0.001초 컷 무중단 리로드
-          sudo docker exec lockbank-nginx nginx -s reload
+          sudo docker exec -u 0 lockbank-nginx nginx -s reload
           echo "✅ Nginx 라우팅 스위칭 완료! 트래픽이 [$TARGET_COLOR] 포트로 흐릅니다."
 
           # 5) 사용이 끝난 구형 컨테이너 클린 청소
