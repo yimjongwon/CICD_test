@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, "${{ github.actor }}"] # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
+    runs-on: ubuntu-latest # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
     environment: ${{ github.actor }}
     permissions:
       contents: read
@@ -51,130 +51,9 @@ jobs:
             -backend-config="dynamodb_table=${{ secrets.MY_TABLE }}" \
             -backend-config="region=ap-northeast-2"
 
-          # 인프라 배포 및 Blue/Green ASG 가동
+          # 인프라 배포
           echo "수동 배포(apply)를 시작합니다."
           terraform apply --auto-approve
-
-          # ====================================================================
-          # 🔥 [핵심] Bastion 보안 장벽 일시적 자동 우회 해제 (자급자족 보안 구멍 개척)
-          # ====================================================================
-          # 1) 테라폼 아웃풋에서 Bastion SG ID와 사설 IP를 확보합니다.
-          BASTION_SG_ID=$(terraform output -json sg_ids | jq -r '.bastion')
-          BASTION_PRIVATE_IP=$(terraform output -raw bastion_private_ip)
-          
-          # 2) 현재 러너(mgmt) 서버의 '사설 IP'를 자동으로 알아냅니다.
-          MGMT_INTERNAL_IP=$(hostname -I | awk '{print $1}')
-          echo "🔍 현재 mgmt 러너의 사설 IP 식별: $MGMT_INTERNAL_IP"
-
-          # 3) AWS CLI를 사용하여 Bastion 보안 그룹에 내 IP(22포트)를 임시 허용 주입합니다.
-          echo "🔓 [보안 임시 해제] Bastion SG($BASTION_SG_ID)에 mgmt IP($MGMT_INTERNAL_IP/32) 인바운드 규칙 주입"
-          aws ec2 authorize-security-group-ingress --group-id "$BASTION_SG_ID" --protocol tcp --port 22 --cidr "$MGMT_INTERNAL_IP/32" || true
-
-          # 4) 워크플로우 실패·성공 여부 상관없이 종료 시 임시 규칙을 무조건 회수하는 트리거(trap) 설정
-          # (이 설정 덕분에 배포가 끝나면 방화벽 문이 다시 굳게 닫힙니다)
-          trap 'echo "🔒 [보안 복구] Bastion SG에서 임시 주입한 mgmt IP 인바운드 규칙 철저 회수 제거"; aws ec2 revoke-security-group-ingress --group-id "$BASTION_SG_ID" --protocol tcp --port 22 --cidr "$MGMT_INTERNAL_IP/32" || true' EXIT
-          # ====================================================================
-
-          # 🎯 [동적 IP 추적 치트키] 테라폼 output에서 ASG 이름을 가져옵니다.
-          ASG_NAME=$(terraform output -json asg_names | jq -r '.blue')
-          echo "🔍 ASG 이름($ASG_NAME)을 기반으로 현재 가동 중인 EC2의 실시간 사설 IP를 조회합니다."
-          
-          # AWS CLI를 사용하여 해당 ASG에 속한 인스턴스 ID를 찾고, 그 인스턴스의 Private IP를 동적으로 추출합니다.
-          INSTANCE_ID=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG_NAME" --query "AutoScalingGroups[0].Instances[0].InstanceId" --output text)
-          
-          if [ "$INSTANCE_ID" = "None" ] || [ -z "$INSTANCE_ID" ]; then
-            echo "❌ 현재 ASG 내에 살아있는 앱 서버 인스턴스를 찾을 수 없습니다."
-            exit 1
-          fi
-          echo "✅ 가동 중인 앱 서버 인스턴스 ID 발견: $INSTANCE_ID"
-          
-          # 🎯 [동적 IP 추적] AWS CLI를 통해 인스턴스의 순수 내부 사설 IP(10.0.x.x)를 직접 가로챕니다.
-          echo "🔍 AWS CLI를 통해 인스턴스의 순수 내부 사설 IP(10.0.x.x) 선로를 추출합니다."
-          APP_HOST=$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" --query "Reservations[0].Instances[0].PrivateIpAddress" --output text)
-          echo "🎯 최종 타겟 사설 선로 주소 확정: $APP_HOST"
-
-          # 원격 커맨드 및 변수 세팅
-          DB_PRIVATE_IP=$(terraform output -raw db_private_ip)
-          APP_USER="ec2-user"
-          SSH_KEY_PATH="./lb-key.pem" # 테라폼이 호스트에 뽑아놓은 프라이빗 키 파일
-
-          # 키페어 파일 권한 보안 규격 준수 변경 (안 하면 SSH가 거부합니다)
-          chmod 400 $SSH_KEY_PATH
-
-          # 🎯 [안전망] 기존 ~/.ssh를 건드리지 않고, 현재 폴더에 임시 config 생성
-          cat << 'EOF' > ./tmp_ssh_config
-          Host bastion
-              HostName BASTION_IP_PLACEHOLDER
-              User APP_USER_PLACEHOLDER
-              IdentityFile KEY_PATH_PLACEHOLDER
-              StrictHostKeyChecking no
-
-          Host 10.0.*
-              User APP_USER_PLACEHOLDER
-              IdentityFile KEY_PATH_PLACEHOLDER
-              StrictHostKeyChecking no
-              ProxyCommand ssh -F ./tmp_ssh_config bastion nc %h %p
-          EOF
-
-          # 파일 내부의 플레이스홀더를 실제 값으로 치환 (절대 경로 보장)
-          REAL_KEY_PATH=$(realpath $SSH_KEY_PATH)
-          sed -i "s|BASTION_IP_PLACEHOLDER|$BASTION_PRIVATE_IP|g" ./tmp_ssh_config
-          sed -i "s|APP_USER_PLACEHOLDER|$APP_USER|g" ./tmp_ssh_config
-          sed -i "s|KEY_PATH_PLACEHOLDER|$REAL_KEY_PATH|g" ./tmp_ssh_config
-          chmod 600 ./tmp_ssh_config
-
-          # 🎯 [최종 무기] -F 옵션으로 방금 만든 임시 config 파일만 강제로 먹입니다.
-          SSH_CMD="ssh -F ./tmp_ssh_config $APP_USER@$APP_HOST"
-          
-          # 🎯 [포트 스위칭 무중단 핵심 스크립트]
-          APP_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest"
-          echo "🔄 mgmt ➡️ 실제 APP 서버($APP_HOST) 진입: 최신 이미지 기반 포트 롤링 배포를 지휘합니다."
-
-          # 현재 가동 중인 컨테이너 조사 후 분기 처리
-          if $SSH_CMD "sudo docker ps --format '{{.Names}}' | grep -q '^fastapi-blue$'"; then
-            TARGET_COLOR="green"
-            TARGET_PORT="8081"
-            OLD_COLOR="blue"
-            OLD_PORT="8080"
-          else
-            TARGET_COLOR="blue"
-            TARGET_PORT="8080"
-            OLD_COLOR="green"
-            OLD_PORT="8081"
-          fi
-
-          echo "🚀 현재 구동 상태: [$OLD_COLOR] ➡️ 🎯 신규 타겟 진영: [$TARGET_COLOR] (포트: $TARGET_PORT)"
-
-          # 1) 도커 허브에서 새로 빌드되어 덮어씌워진 latest 이미지를 강제로 Pull
-          $SSH_CMD "sudo docker pull $APP_IMAGE"
-          $SSH_CMD "sudo docker rm -f fastapi-$TARGET_COLOR >/dev/null 2>&1 || true"
-          $SSH_CMD "sudo docker network create lb-net >/dev/null 2>&1 || true"
-          
-          # 2) 반대편 노는 포트에 먼저 안착 가동
-          $SSH_CMD "sudo docker run -d --restart=always --net lb-net --name fastapi-$TARGET_COLOR -p $TARGET_PORT:$TARGET_PORT \
-            -e DB_HOST_MAIN=$DB_PRIVATE_IP \
-            -e DB_HOST_REPLICA=${{ secrets.REPLICA_IP }} \
-            -e DB_USER=\"lb-user\" \
-            -e DB_PASSWORD=\"${{ secrets.DB_PASSWORD }}\" \
-            -e DB_NAME=\"lb-db\" \
-            -e SECRET_KEY=${{ secrets.SECRET_KEY }} $APP_IMAGE"
-
-          # 3) 신규 컨테이너 가동 웜업 대기 (502 에러 완전 예방)
-          echo "⏳ 신규 컨테이너 안정화 대기 중..."
-          sleep 7
-
-          # 4) Nginx Upstream 타겟 스위칭 치환 (sed 마법)
-          $SSH_CMD "sudo docker cp lockbank-nginx:/etc/nginx/nginx.conf /tmp/nginx.conf"
-          $SSH_CMD "sed -i \"s/server fastapi-.*:.*;/server fastapi-$TARGET_COLOR:$TARGET_PORT;/g\" /tmp/nginx.conf"
-          $SSH_CMD "sudo docker cp /tmp/nginx.conf lockbank-nginx:/etc/nginx/nginx.conf"
-
-          # Nginx 0.001초 컷 무중단 리로드
-          $SSH_CMD "sudo docker exec -u 0 lockbank-nginx nginx -s reload"
-          echo "✅ Nginx 라우팅 스위칭 완료! 트래픽이 [$TARGET_COLOR] 포트로 흐릅니다."
-
-          # 5) 사용이 끝난 구형 컨테이너 클린 청소
-          $SSH_CMD "sudo docker rm -f fastapi-$OLD_COLOR >/dev/null 2>&1 || true"
-          echo "🧹 구형 컨테이너(fastapi-$OLD_COLOR) 제거 완료."
 
           # [핵심 변환 로직] 도메인이 정상 출력되었는지 판단 후 OWASP ZAP용 타겟 URL 생성
           SVC_DOMAIN=$(terraform output -raw service_domain)
