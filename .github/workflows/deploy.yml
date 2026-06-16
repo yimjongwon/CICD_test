@@ -1,13 +1,16 @@
 # cicd_test/.github/workflows/deploy.yml
 
-
 name: "Terraform Apply(수동)"
 on:
   workflow_dispatch: # 수동 실행 버튼
-
+    inputs:
+      build_number:
+        description: '배포할 도커 이미지의 빌드 번호 (숫자 입력, 생략시 latest)'
+        required: false
+        default: 'latest'
 jobs:
   deploy:
-    runs-on: [self-hosted, "${{ github.actor }}"] # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
+    runs-on: [self-hosted, "${{ github.actor }}"] 
     environment: ${{ github.actor }}
     permissions:
       contents: read
@@ -16,47 +19,6 @@ jobs:
       # 1. 소스코드 체크아웃
       - name: Checkout Source Code
         uses: actions/checkout@v5
-
-      - name: Check for Application and Docker changes
-        id: changes
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            docker_updated:
-              - 'docker/app/Dockerfile'
-              - 'docker/docker-compose.yaml'
-              - 'docker/app/requirements.txt'
-              - 'docker/app/**'
-              - '!docker/app/**/*.md'
-              - '!docker/app/**/README*'
-
-      # 도커 허브 로그인
-      - name: Login to Docker Hub
-        if: steps.changes.outputs.docker_updated == 'true'
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      # 도커 이미지 빌드 (HTML 변경 반영)
-      - name: Build Docker Image
-        if: steps.changes.outputs.docker_updated == 'true'
-        working-directory: ./docker/app
-        run: |
-          docker build \
-          --no-cache \
-          --build-arg GITHUB_ACTOR="${{ github.actor }}" \
-          -t ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }} .
-
-          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }} \
-          ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest
-
-      - name: Push Docker Image
-        if: steps.changes.outputs.docker_updated == 'true'
-        run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }}
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest
-
      
       # 2. terraform 환경 구성
       - name: Setup Terraform
@@ -76,8 +38,9 @@ jobs:
           TF_VAR_route53_zone_name: ${{ secrets.DOMAIN }}
           TF_VAR_db_host_replica: ${{ secrets.REPLICA_IP }}
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
-          TF_VAR_app_image: ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }} 
-           # 컨테이너 보안키
+          # 🎯 [안전 교정] 깃허브 규격에 맞춰 텍스트 매핑 오류 해결
+          TF_VAR_app_image: ${{ format('{0}/lock-app:{1}', secrets.DOCKERHUB_USERNAME, github.event.inputs.build_number) }}
+          # 컨테이너 보안키
           TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
         run: |
           # 🚀 [안전장치] GitHub Environment에 백엔드 설정(MY_BUCKET)이 없으면 즉시 차단
@@ -93,38 +56,31 @@ jobs:
             -backend-config="region=ap-northeast-2"
 
           # 인프라 배포 및 Blue/Green ASG 가동
-          echo "수동 배포(apply)를 시작합니다."
-          terraform apply --auto-approve 
+          echo "🚀 입력된 이미지 태그 [${{ github.event.inputs.build_number }}]로 수동 배포(apply)를 시작합니다."
+          terraform apply --auto-approve
 
+          # 🎯 새 인스턴스가 도커 땡겨오고 Nginx 바인딩될 최소한의 시간 확보
+          sleep 60
+          
           # [핵심 변환 로직] 도메인이 정상 출력되었는지 판단 후 OWASP ZAP용 타겟 URL 생성
           SVC_DOMAIN=$(terraform output -raw service_domain)
           
           if [ "$SVC_DOMAIN" = "N/A (HTTP only)" ] || [ -z "$SVC_DOMAIN" ]; then
-            # HTTPS 도메인이 설정되지 않았다면 ALB의 순수 DNS 주소(HTTP)를 타겟으로 삼음
             ALB_DNS=$(terraform output -raw alb_dns_name)
             CURRENT_APP_URL="http://${ALB_DNS}"
           else
-            # 도메인이 정상 작동 중이라면 해당 도메인 주소(HTTPS)를 타겟으로 삼음
             CURRENT_APP_URL="https://${SVC_DOMAIN}"
           fi
 
           # 1) 다음 스텝(OWASP ZAP)을 위해 파일에 환경변수 저장
           echo "APP_URL=${CURRENT_APP_URL}" >> $GITHUB_ENV
-
-          # 제대로 담겼는지 깃허브 액션 콘솔에서 확인하기 위한 한 줄
           echo "🎯 타겟 APP_URL이 설정되었습니다: ${CURRENT_APP_URL}"
 
       # ==========================================
       # 🎯 [보안 최종단계] DAST: OWASP ZAP (동적 모의 해킹)
       # ==========================================
-      # 앤서블이 서버를 무사히 가동했으므로, 살아있는 URL을 향해 공격을 찌릅니다.
       - name: Run OWASP ZAP Baseline Scan
-      # 깃허브 API 변경점이 반영된 최신 안정 버전으로 교체합니다.
         uses: zaproxy/action-baseline@v0.14.0
         with:
-          # AWS 로드밸런서(ALB) DNS 주소나 연동된 도메인 주소
           target: ${{ env.APP_URL }}
-          
-          # 만약 특정 취약점이 나왔을 때 파이프라인을 실패(레드카드)로 만들고 싶다면 true로 둡니다.
-          # 처음 테스트할 때는 어떤 결과가 나오는지 보기 위해 false로 두고 관측해도 좋습니다.
           fail_action: false
