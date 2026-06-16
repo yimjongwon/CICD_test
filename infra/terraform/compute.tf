@@ -190,6 +190,8 @@ resource "aws_launch_template" "app" {
       sleep 3
     done
 
+    docker rm -f fastapi || true
+
     docker run -d --restart=always \
       --net lb-net \
       --name fastapi \
@@ -209,6 +211,9 @@ resource "aws_launch_template" "app" {
     # ALB가 보내는 호스트의 80 포트를 정면으로 받습니다.
     # 같은 가상망(--net lb-net)에 태우면, Nginx가 아까 띄운 'http://fastapi:8080'으로 신호를 토스해 줍니다.
     docker pull yimjongwon/lock-security-nginx:latest || true
+    
+    docker rm -f lockbank-nginx || true
+    
     docker run -d --restart=always \
       --net lb-net \
       --name lockbank-nginx \
