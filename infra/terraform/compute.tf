@@ -187,7 +187,11 @@ resource "aws_launch_template" "app" {
     docker network create lb-net || true
 
     # 4) [FastAPI 앱 컨테이너 가동] lb-fastapi
-    docker pull ${var.app_image} || true
+    until docker pull ${var.app_image}; do
+      echo "⏳ 도커 이미지(${var.app_image}) 다운로드 대기 중..."
+      sleep 3
+    done
+
     docker run -d --restart=always \
       --net lb-net \
       --name fastapi \
@@ -239,7 +243,7 @@ resource "aws_autoscaling_group" "blue" {
 
   launch_template {
     id      = aws_launch_template.app.id
-    version = "$Latest"
+    version = aws_launch_template.app.latest_version
   }
 
   instance_refresh {
@@ -272,7 +276,7 @@ resource "aws_autoscaling_group" "green" {
   health_check_grace_period = 90 # ◀ 이 줄을 추가하여 초기 컨테이너 구동 시간 확보
   launch_template {
     id      = aws_launch_template.app.id
-    version = "$Latest"
+    version = aws_launch_template.app.latest_version
   }
 
   instance_refresh {
