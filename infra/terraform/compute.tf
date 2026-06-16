@@ -186,6 +186,9 @@ resource "aws_launch_template" "app" {
     # 3) Nginx와 FastAPI가 서로 통신할 수 있는 도커 내부 가상 네트워크 생성
     docker network create lb-net || true
 
+    docker rm -f fastapi || true
+    docker rmi -f ${var.app_image} || true
+    
     # 4) [FastAPI 앱 컨테이너 가동] lb-fastapi
     until docker pull ${var.app_image}; do
       echo "⏳ 도커 이미지(${var.app_image}) 다운로드 대기 중..."
