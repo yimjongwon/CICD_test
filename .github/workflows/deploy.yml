@@ -76,9 +76,9 @@ jobs:
 
           # 1) 도커 허브에서 새로 빌드되어 덮어씌워진 latest 이미지를 강제로 Pull
           sudo docker pull $APP_IMAGE
-          sudo docker rm -f fastapi-$TARGET_COLOR || true
+          sudo docker rm -f fastapi-$TARGET_COLOR >/dev/null 2>&1 || true
 
-          sudo docker network create lb-net || true
+          sudo docker network create lb-net >/dev/null 2>&1 || true
           
           # 2) 반대편 노는 포트에 먼저 안착 가동
           sudo docker run -d --restart=always --net lb-net --name fastapi-$TARGET_COLOR -p $TARGET_PORT:$TARGET_PORT \
@@ -92,14 +92,16 @@ jobs:
           sleep 7
 
           # 4) Nginx Upstream 타겟 스위칭 치환 (sed 마법)
-          sudo docker exec -u 0 lockbank-nginx sed -i "s/server fastapi-$OLD_COLOR:$OLD_PORT;/server fastapi-$TARGET_COLOR:$TARGET_PORT;/g" /etc/nginx/nginx.conf
+          sudo docker cp lockbank-nginx:/etc/nginx/nginx.conf /tmp/nginx.conf
+          sed -i "s/server fastapi-.*:.*;/server fastapi-$TARGET_COLOR:$TARGET_PORT;/g" /tmp/nginx.conf
+          sudo docker cp /tmp/nginx.conf lockbank-nginx:/etc/nginx/nginx.conf
 
           # Nginx 0.001초 컷 무중단 리로드
           sudo docker exec -u 0 lockbank-nginx nginx -s reload
           echo "✅ Nginx 라우팅 스위칭 완료! 트래픽이 [$TARGET_COLOR] 포트로 흐릅니다."
 
           # 5) 사용이 끝난 구형 컨테이너 클린 청소
-          sudo docker rm -f fastapi-$OLD_COLOR || true
+          sudo docker rm -f fastapi-$OLD_COLOR >/dev/null 2>&1 || true
           echo "🧹 구형 컨테이너(fastapi-$OLD_COLOR) 제거 완료."
 
           # [핵심 변환 로직] 도메인이 정상 출력되었는지 판단 후 OWASP ZAP용 타겟 URL 생성
