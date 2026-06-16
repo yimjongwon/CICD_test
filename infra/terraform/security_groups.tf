@@ -54,6 +54,14 @@ resource "aws_security_group" "bastion_sg" {
     cidr_blocks = [var.admin_ingress_cidr]
   }
 
+  ingress {
+    description = "SSH from mgmt internal network"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main.cidr_block] # VPC 내부 사설 대역 전체 오픈
+  }
+
   # Tailscale: 인바운드 포트 개방 불필요 (아웃바운드 UDP/443 으로 NAT 통과)
   egress {
     from_port   = 0
