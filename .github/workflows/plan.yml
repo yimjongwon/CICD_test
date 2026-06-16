@@ -90,6 +90,7 @@ jobs:
         run: |
           # 내 도커허브 계정명/이미지명:태그 형태로 빌드합니다.
           docker build \
+          --no-cache \
           --build-arg GITHUB_ACTOR="${{ github.actor }}" \
           -t ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }} .
 
