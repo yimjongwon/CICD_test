@@ -82,7 +82,7 @@ jobs:
           chmod 400 $SSH_KEY_PATH
 
           # 🎯 [핵심] mgmt ➡️ Bastion(10.0.1.68) ➡️ APP 서버($APP_HOST) 경로를 개척합니다.
-          SSH_CMD="ssh -i $SSH_KEY_PATH -p 22 -o StrictHostKeyChecking=no -o ProxyCommand=\"ssh -i $SSH_KEY_PATH -W %h:%p -o StrictHostKeyChecking=no $APP_USER@$BASTION_PRIVATE_IP\" $APP_USER@$APP_HOST"
+          SSH_CMD="ssh -i $SSH_KEY_PATH -p 22 -o StrictHostKeyChecking=no -o ProxyCommand=\"ssh -i $SSH_KEY_PATH -o StrictHostKeyChecking=no $APP_USER@$BASTION_PRIVATE_IP nc %h %p\" $APP_USER@$APP_HOST"
           
           # 🎯 [포트 스위칭 무중단 핵심 스크립트]
           APP_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest"
