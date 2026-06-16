@@ -4,11 +4,7 @@
 name: "Terraform Apply(수동)"
 on:
   workflow_dispatch: # 수동 실행 버튼
-    inputs:
-        build_number:
-          description: '배포할 도커 이미지의 빌드 번호 (숫자 입력)'
-          required: true
-          default: 'latest'
+
 jobs:
   deploy:
     runs-on: [self-hosted, "${{ github.actor }}"] # 최신 ubuntu machine 을 잠시 빌려서 아래의 작업을 수행하겠다는 의미
@@ -39,8 +35,7 @@ jobs:
           TF_VAR_route53_zone_name: ${{ secrets.DOMAIN }}
           TF_VAR_db_host_replica: ${{ secrets.REPLICA_IP }}
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
-          # 🎯 [핵심] 입력한 빌드 번호 숫자가 테라폼으로 정확히 주입되도록 규격을 맞췄습니다.
-          TF_VAR_app_image: ${{ format('{0}/lock-app:{1}', secrets.DOCKERHUB_USERNAME, github.event.inputs.build_number) }}
+          TF_VAR_app_image: ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest      
            # 컨테이너 보안키
           TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
         run: |
@@ -57,13 +52,8 @@ jobs:
             -backend-config="region=ap-northeast-2"
 
           # 인프라 배포 및 Blue/Green ASG 가동
-          echo "🚀 입력된 이미지 태그 [${{ github.event.inputs.build_number }}]로 무중단 배포(apply)를 시작합니다."
           echo "수동 배포(apply)를 시작합니다."
           terraform apply --auto-approve
-
-          # 🎯 [중요] 새 서버가 인스턴스를 만들고 도커 이미지를 받아 완전히 헬스체크를 통과할 시간을 줍니다.
-          echo "⏳ 신규 인스턴스가 프로비저닝되어 로드밸런서 헬스체크를 통과할 때까지 대기합니다 (90초)..."
-          sleep 90
 
           # [핵심 변환 로직] 도메인이 정상 출력되었는지 판단 후 OWASP ZAP용 타겟 URL 생성
           SVC_DOMAIN=$(terraform output -raw service_domain)

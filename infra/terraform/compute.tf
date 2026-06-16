@@ -145,9 +145,8 @@ resource "aws_instance" "bastion" {
 
 # ── App Launch Template (Blue/Green 공용 베이스) ──────────
 resource "aws_launch_template" "app" {
-  name = "${var.project}-app-lt-${md5(var.app_image)}"
+  name_prefix = "${var.project}-app-"
   # 비우면 SSM 최신 AL2023(공유 기본), app_ami_id 채우면 Packer AMI(데모 가속, 선택)
-  
   image_id      = var.app_ami_id != "" ? var.app_ami_id : data.aws_ssm_parameter.al2023.value
   instance_type = var.app_instance_type
   key_name      = aws_key_pair.kp.key_name
@@ -244,16 +243,7 @@ resource "aws_autoscaling_group" "blue" {
 
   launch_template {
     id      = aws_launch_template.app.id
-    version = aws_launch_template.app.latest_version
-  }
-
-  instance_refresh {
-    strategy = "Rolling"
-    preferences {
-      min_healthy_percentage = 100
-      max_healthy_percentage = 200
-    }
-    triggers = ["launch_template"] # 템플릿 버전이 오르면 바로 리프레시 작동
+    version = "$Latest"
   }
 
   tag {
@@ -275,19 +265,9 @@ resource "aws_autoscaling_group" "green" {
   target_group_arns         = [aws_lb_target_group.green.arn]
   health_check_type         = "ELB"
   health_check_grace_period = 150 # ◀ 이 줄을 추가하여 초기 컨테이너 구동 시간 확보
-  
   launch_template {
     id      = aws_launch_template.app.id
-    version = aws_launch_template.app.latest_version
-  }
-
-  instance_refresh {
-    strategy = "Rolling"
-    preferences {
-      min_healthy_percentage = 100
-      max_healthy_percentage = 200 
-    }
-    triggers = ["launch_template"] 
+    version = "$Latest"
   }
 
   tag {
