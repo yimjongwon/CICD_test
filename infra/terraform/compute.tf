@@ -245,7 +245,8 @@ resource "aws_autoscaling_group" "blue" {
   instance_refresh {
     strategy = "Rolling"
     preferences {
-      min_healthy_percentage = 50 
+      min_healthy_percentage = 100
+      max_healthy_percentage = 200
     }
     triggers = ["launch_template"] # 템플릿 버전이 오르면 바로 리프레시 작동
   }
@@ -277,7 +278,8 @@ resource "aws_autoscaling_group" "green" {
   instance_refresh {
     strategy = "Rolling"
     preferences {
-      min_healthy_percentage = 50  
+      min_healthy_percentage = 100
+      max_healthy_percentage = 200 
     }
     triggers = ["launch_template"] 
   }
