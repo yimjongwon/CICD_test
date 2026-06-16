@@ -188,7 +188,7 @@ resource "aws_launch_template" "app" {
 
     docker run -d --restart=always \
       --net lb-net \
-      --name fastapi-blue \
+      --name fastapi \
       -p 8080:8080 \
       -e DB_HOST_MAIN="${aws_instance.db.private_ip}" \
       -e DB_HOST_REPLICA="${var.db_host_replica}" \
