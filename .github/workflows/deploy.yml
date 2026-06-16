@@ -78,6 +78,8 @@ jobs:
           docker pull $APP_IMAGE
           docker rm -f fastapi-$TARGET_COLOR || true
 
+          docker network create lb-net || true
+          
           # 2) 반대편 노는 포트에 먼저 안착 가동
           docker run -d --restart=always --net lb-net --name fastapi-$TARGET_COLOR -p $TARGET_PORT:$TARGET_PORT \
             -e DB_HOST_MAIN="$(terraform output -raw db_private_ip)" \
