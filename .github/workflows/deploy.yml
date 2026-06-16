@@ -55,6 +55,26 @@ jobs:
           echo "수동 배포(apply)를 시작합니다."
           terraform apply --auto-approve
 
+          # ====================================================================
+          # 🔥 [핵심] Bastion 보안 장벽 일시적 자동 우회 해제 (자급자족 보안 구멍 개척)
+          # ====================================================================
+          # 1) 테라폼 아웃풋에서 Bastion SG ID와 사설 IP를 확보합니다.
+          BASTION_SG_ID=$(terraform output -json sg_ids | jq -r '.bastion')
+          BASTION_PRIVATE_IP=$(terraform output -raw bastion_private_ip)
+          
+          # 2) 현재 러너(mgmt) 서버의 '사설 IP'를 자동으로 알아냅니다.
+          MGMT_INTERNAL_IP=$(hostname -I | awk '{print $1}')
+          echo "🔍 현재 mgmt 러너의 사설 IP 식별: $MGMT_INTERNAL_IP"
+
+          # 3) AWS CLI를 사용하여 Bastion 보안 그룹에 내 IP(22포트)를 임시 허용 주입합니다.
+          echo "🔓 [보안 임시 해제] Bastion SG($BASTION_SG_ID)에 mgmt IP($MGMT_INTERNAL_IP/32) 인바운드 규칙 주입"
+          aws ec2 authorize-security-group-ingress --group-id "$BASTION_SG_ID" --protocol tcp --port 22 --cidr "$MGMT_INTERNAL_IP/32" || true
+
+          # 4) 워크플로우 실패·성공 여부 상관없이 종료 시 임시 규칙을 무조건 회수하는 트리거(trap) 설정
+          # (이 설정 덕분에 배포가 끝나면 방화벽 문이 다시 굳게 닫힙니다)
+          trap 'echo "🔒 [보안 복구] Bastion SG에서 임시 주입한 mgmt IP 인바운드 규칙 철저 회수 제거"; aws ec2 revoke-security-group-ingress --group-id "$BASTION_SG_ID" --protocol tcp --port 22 --cidr "$MGMT_INTERNAL_IP/32" || true' EXIT
+          # ====================================================================
+
           # 🎯 [동적 IP 추적 치트키] 테라폼 output에서 ASG 이름을 가져옵니다.
           ASG_NAME=$(terraform output -json asg_names | jq -r '.blue')
           echo "🔍 ASG 이름($ASG_NAME)을 기반으로 현재 가동 중인 EC2의 실시간 사설 IP를 조회합니다."
@@ -74,7 +94,6 @@ jobs:
           echo "🎯 최종 타겟 사설 선로 주소 확정: $APP_HOST"
 
           # 원격 커맨드 및 변수 세팅
-          BASTION_PRIVATE_IP=$(terraform output -raw bastion_private_ip)
           DB_PRIVATE_IP=$(terraform output -raw db_private_ip)
           APP_USER="ec2-user"
           SSH_KEY_PATH="./lb-key.pem" # 테라폼이 호스트에 뽑아놓은 프라이빗 키 파일
