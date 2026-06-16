@@ -196,9 +196,3 @@ variable "secret_key" {
   description = "컨테이너 보안키"
   type        = string
 }
-
-variable "deploy_trigger" {
-  type        = string
-  default = ""
-  description = "CI/CD 수동 배포 시 인스턴스 리프레시를 유발하기 위한 무작위 난수 변수"
-}

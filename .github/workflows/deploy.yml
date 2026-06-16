@@ -38,7 +38,6 @@ jobs:
           TF_VAR_app_image: ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest      
            # 컨테이너 보안키
           TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
-          TF_VAR_deploy_trigger: ${{ github.run_id }}-${{ github.run_attempts }}
         run: |
           # 🚀 [안전장치] GitHub Environment에 백엔드 설정(MY_BUCKET)이 없으면 즉시 차단
           if [ -z "${{ secrets.MY_BUCKET }}" ]; then
@@ -55,10 +54,6 @@ jobs:
           # 인프라 배포 및 Blue/Green ASG 가동
           echo "수동 배포(apply)를 시작합니다."
           terraform apply --auto-approve
-
-          # ⏳ [핵심 추가] AWS가 새 서버를 띄우고 도커 latest 이미지를 풀 받아 가동할 시간을 벌어줍니다.
-          echo "⏳ AWS ASG 인스턴스 롤링 리프레시 및 도커 컨테이너 기동을 위해 150초간 대기합니다..."
-          sleep 150
 
           # [핵심 변환 로직] 도메인이 정상 출력되었는지 판단 후 OWASP ZAP용 타겟 URL 생성
           SVC_DOMAIN=$(terraform output -raw service_domain)
