@@ -174,7 +174,7 @@ resource "aws_launch_template" "app" {
       --authkey=${tailscale_tailnet_key.app_join.key} \
       --accept-routes=false \
       --hostname="$HN" \
-      --ssh                       # 선택: tailscale ssh break-glass (ACL ssh 섹션 필요)
+      # --ssh                       # 선택: tailscale ssh break-glass (ACL ssh 섹션 필요)
 
     # 2) 도커 엔진 기본 설치
     dnf update -y
