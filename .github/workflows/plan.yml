@@ -115,9 +115,9 @@ jobs:
       # ==========================================
       # 6. 모든 보안 검증이 완벽히 완료된 후에만 이미지 최종 푸시
       # ==========================================
-      - name: Push Docker Image
-        if: steps.changes.outputs.docker_updated == 'true'
-        run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }}
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest
+      # - name: Push Docker Image
+      #   if: steps.changes.outputs.docker_updated == 'true'
+      #   run: |
+      #     docker push ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }}
+      #     docker push ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest
 

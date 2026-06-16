@@ -16,6 +16,47 @@ jobs:
       # 1. 소스코드 체크아웃
       - name: Checkout Source Code
         uses: actions/checkout@v5
+
+      - name: Check for Application and Docker changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            docker_updated:
+              - 'docker/app/Dockerfile'
+              - 'docker/docker-compose.yaml'
+              - 'docker/app/requirements.txt'
+              - 'docker/app/**'
+              - '!docker/app/**/*.md'
+              - '!docker/app/**/README*'
+
+      # 도커 허브 로그인
+      - name: Login to Docker Hub
+        if: steps.changes.outputs.docker_updated == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 도커 이미지 빌드 (HTML 변경 반영)
+      - name: Build Docker Image
+        if: steps.changes.outputs.docker_updated == 'true'
+        working-directory: ./docker/app
+        run: |
+          docker build \
+          --no-cache \
+          --build-arg GITHUB_ACTOR="${{ github.actor }}" \
+          -t ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }} .
+
+          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }} \
+          ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest
+
+      - name: Push Docker Image
+        if: steps.changes.outputs.docker_updated == 'true'
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest
+
      
       # 2. terraform 환경 구성
       - name: Setup Terraform
@@ -53,7 +94,7 @@ jobs:
 
           # 인프라 배포 및 Blue/Green ASG 가동
           echo "수동 배포(apply)를 시작합니다."
-          terraform apply --auto-approve -replace="aws_launch_template.app"
+          terraform apply --auto-approve 
 
           # [핵심 변환 로직] 도메인이 정상 출력되었는지 판단 후 OWASP ZAP용 타겟 URL 생성
           SVC_DOMAIN=$(terraform output -raw service_domain)
