@@ -68,17 +68,10 @@ jobs:
           fi
           echo "✅ 가동 중인 앱 서버 인스턴스 ID 발견: $INSTANCE_ID"
           
-          # 🎯 [네트워크 선로 리팩토링 핵심] 
-          # AWS 내부 생 사설 IP(10.0.x.x)는 Subnet 간 선로 제약이 생길 수 있으므로,
-          # mgmt 서버 터미널의 테일스케일 백엔드를 쿼리하여 가상망 내부의 무적 통과 IP(100.x.x.x)를 추출합니다.
-          echo "🔍 Tailscale 연결 상태에서 인스턴스($INSTANCE_ID) 매칭 가상 IP를 낚아챕니다."
-          APP_HOST=$(tailscale status | grep "$INSTANCE_ID" | awk '{print $1}')
-
-          # 2차 방어선: 만약 status 파싱 타이밍이 안 맞을 경우 MagicDNS 명시적 가상 호스트네임 백업 구성
-          if [ -z "$APP_HOST" ]; then
-            APP_HOST="lb-app-$INSTANCE_ID"
-          fi
-          echo "🎯 최종 타겟 가상망 망 주소 확정: $APP_HOST"
+          # 🎯 [동적 IP 추적] AWS CLI를 통해 인스턴스의 순수 내부 사설 IP(10.0.x.x)를 직접 가로챕니다.
+          echo "🔍 AWS CLI를 통해 인스턴스의 순수 내부 사설 IP(10.0.x.x) 선로를 추출합니다."
+          APP_HOST=$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" --query "Reservations[0].Instances[0].PrivateIpAddress" --output text)
+          echo "🎯 최종 타겟 사설 선로 주소 확정: $APP_HOST"
 
           # 원격 커맨드 및 변수 세팅
           DB_PRIVATE_IP=$(terraform output -raw db_private_ip)
