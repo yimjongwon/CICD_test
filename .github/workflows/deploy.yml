@@ -89,7 +89,7 @@ jobs:
           chmod 400 $SSH_KEY_PATH
 
           # 🎯 [핵심] mgmt에서 App 서버로 원격 명령을 때려줄 원격 리모컨 무선 채널 구성 완료
-          SSH_CMD="ssh -i $SSH_KEY_PATH -o StrictHostKeyChecking=no $APP_USER@$APP_HOST"
+          SSH_CMD="ssh -i $SSH_KEY_PATH -p 22 -o StrictHostKeyChecking=no $APP_USER@$APP_HOST"
           
           # 🎯 [포트 스위칭 무중단 핵심 스크립트]
           APP_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest"
