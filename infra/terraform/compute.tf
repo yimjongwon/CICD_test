@@ -184,14 +184,11 @@ resource "aws_launch_template" "app" {
     docker network create lb-net || true
 
     # 4) [FastAPI 앱 컨테이너 가동] lb-fastapi
-    until docker pull ${var.app_image}; do
-      echo "⏳ 도커 이미지(${var.app_image}) 다운로드 대기 중..."
-      sleep 3
-    done
+    until docker pull ${var.app_image}; do sleep 3; done
 
     docker run -d --restart=always \
       --net lb-net \
-      --name fastapi \
+      --name fastapi-blue \
       -p 8080:8080 \
       -e DB_HOST_MAIN="${aws_instance.db.private_ip}" \
       -e DB_HOST_REPLICA="${var.db_host_replica}" \

@@ -55,6 +55,52 @@ jobs:
           echo "수동 배포(apply)를 시작합니다."
           terraform apply --auto-approve
 
+          # 🎯 [포트 스위칭 무중단 핵심 스크립트]
+          APP_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest"
+          echo "🔄 최신 :latest 이미지 기반 단일 호스트 포트 롤링 배포를 시작합니다."
+
+          # 현재 가동 중인 컨테이너 조사 후 분기 처리
+          if docker ps --format '{{.Names}}' | grep -q "^fastapi-blue$"; then
+            TARGET_COLOR="green"
+            TARGET_PORT="8081"
+            OLD_COLOR="blue"
+            OLD_PORT="8080"
+          else
+            TARGET_COLOR="blue"
+            TARGET_PORT="8080"
+            OLD_COLOR="green"
+            OLD_PORT="8081"
+          fi
+
+          echo "🚀 현재 구동 상태: [$OLD_COLOR] ➡️ 🎯 신규 타겟 진영: [$TARGET_COLOR] (포트: $TARGET_PORT)"
+
+          # 1) 도커 허브에서 새로 빌드되어 덮어씌워진 latest 이미지를 강제로 Pull
+          docker pull $APP_IMAGE
+          docker rm -f fastapi-$TARGET_COLOR || true
+
+          # 2) 반대편 노는 포트에 먼저 안착 가동
+          docker run -d --restart=always --net lb-net --name fastapi-$TARGET_COLOR -p $TARGET_PORT:$TARGET_PORT \
+            -e DB_HOST_MAIN="$(terraform output -raw db_private_ip)" \
+            -e DB_HOST_REPLICA="${{ secrets.REPLICA_IP }}" \
+            -e DB_USER="lb-user" -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" -e DB_NAME="lb-db" \
+            -e SECRET_KEY="${{ secrets.SECRET_KEY }}" $APP_IMAGE
+
+          # 3) 신규 컨테이너 가동 웜업 대기 (502 에러 완전 예방)
+          echo "⏳ 신규 컨테이너 안정화 대기 중..."
+          sleep 7
+
+          # 4) Nginx Upstream 타겟 스위칭 치환 (sed 마법)
+          docker exec lockbank-nginx sed -i "s/fastapi-$OLD_COLOR:$OLD_PORT/fastapi-$TARGET_COLOR:$TARGET_PORT/g" /etc/nginx/nginx.conf 2>/dev/null || \
+          docker exec lockbank-nginx sed -i "s/fastapi-blue:8080/fastapi-$TARGET_COLOR:$TARGET_PORT/g" /etc/nginx/nginx.conf
+
+          # Nginx 0.001초 컷 무중단 리로드
+          docker exec lockbank-nginx nginx -s reload
+          echo "✅ Nginx 라우팅 스위칭 완료! 트래픽이 [$TARGET_COLOR] 포트로 흐릅니다."
+
+          # 5) 사용이 끝난 구형 컨테이너 클린 청소
+          docker rm -f fastapi-$OLD_COLOR || true
+          echo "🧹 구형 컨테이너(fastapi-$OLD_COLOR) 제거 완료."
+
           # [핵심 변환 로직] 도메인이 정상 출력되었는지 판단 후 OWASP ZAP용 타겟 URL 생성
           SVC_DOMAIN=$(terraform output -raw service_domain)
           
