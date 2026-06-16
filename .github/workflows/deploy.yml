@@ -74,6 +74,7 @@ jobs:
           echo "🎯 최종 타겟 사설 선로 주소 확정: $APP_HOST"
 
           # 원격 커맨드 및 변수 세팅
+          BASTION_PRIVATE_IP=$(terraform output -raw bastion_private_ip)
           DB_PRIVATE_IP=$(terraform output -raw db_private_ip)
           APP_USER="ec2-user"
           SSH_KEY_PATH="./lb-key.pem" # 테라폼이 호스트에 뽑아놓은 프라이빗 키 파일
@@ -81,8 +82,30 @@ jobs:
           # 키페어 파일 권한 보안 규격 준수 변경 (안 하면 SSH가 거부합니다)
           chmod 400 $SSH_KEY_PATH
 
-          # 🎯 [핵심] mgmt ➡️ Bastion(10.0.1.68) ➡️ APP 서버($APP_HOST) 경로를 개척합니다.
-          SSH_CMD="ssh -i $SSH_KEY_PATH -p 22 -o StrictHostKeyChecking=no -o ProxyCommand=\"ssh -i $SSH_KEY_PATH -o StrictHostKeyChecking=no $APP_USER@$BASTION_PRIVATE_IP nc %h %p\" $APP_USER@$APP_HOST"
+          # 🎯 [안전망] 기존 ~/.ssh를 건드리지 않고, 현재 폴더에 임시 config 생성
+          cat << 'EOF' > ./tmp_ssh_config
+          Host bastion
+              HostName BASTION_IP_PLACEHOLDER
+              User APP_USER_PLACEHOLDER
+              IdentityFile KEY_PATH_PLACEHOLDER
+              StrictHostKeyChecking no
+
+          Host 10.0.*
+              User APP_USER_PLACEHOLDER
+              IdentityFile KEY_PATH_PLACEHOLDER
+              StrictHostKeyChecking no
+              ProxyCommand ssh -F ./tmp_ssh_config bastion nc %h %p
+          EOF
+
+          # 파일 내부의 플레이스홀더를 실제 값으로 치환 (절대 경로 보장)
+          REAL_KEY_PATH=$(realpath $SSH_KEY_PATH)
+          sed -i "s|BASTION_IP_PLACEHOLDER|$BASTION_PRIVATE_IP|g" ./tmp_ssh_config
+          sed -i "s|APP_USER_PLACEHOLDER|$APP_USER|g" ./tmp_ssh_config
+          sed -i "s|KEY_PATH_PLACEHOLDER|$REAL_KEY_PATH|g" ./tmp_ssh_config
+          chmod 600 ./tmp_ssh_config
+
+          # 🎯 [최종 무기] -F 옵션으로 방금 만든 임시 config 파일만 강제로 먹입니다.
+          SSH_CMD="ssh -F ./tmp_ssh_config $APP_USER@$APP_HOST"
           
           # 🎯 [포트 스위칭 무중단 핵심 스크립트]
           APP_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest"
